@@ -39,19 +39,6 @@ def test_rule_name_is_identical_in_every_locale():
 
 
 @pytest.mark.django_db
-@pytest.mark.xfail(
-    reason=(
-        "buyback/templates/buyback/snapshot.html does not yet call the "
-        "price_source_label / flag_reason_label filters -- it prints "
-        "item.price_source_kind / item.flag_reason_code raw. Wiring the "
-        "template is Task 7's job (it is in Task 7's own file list), and "
-        "tests/buyback/test_views.py::test_snapshot_page_shows_items_totals_and_flags "
-        "currently asserts on that raw 'BLACKLISTED' text, so doing the wiring "
-        "here would break an existing, deliberately-written test. Remove this "
-        "marker once Task 7 wires the filters into the template."
-    ),
-    strict=True,
-)
 def test_eve_item_names_are_never_translated_on_the_quote_page():
     snapshot = Snapshot.objects.create(
         code="I18NTEST", total_value=Decimal("100.00"), contract_to="Corp"

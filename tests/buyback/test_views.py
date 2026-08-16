@@ -57,7 +57,7 @@ def test_snapshot_page_shows_items_totals_and_flags(client, priced_snapshot):
     body = response.content.decode()
     assert "Raven" in body
     assert "140.00" in body
-    assert "BLACKLISTED" in body
+    assert "Blacklisted" in body
     assert "Buyback Corp" in body
     assert "janice.e-351.com/a/4ovArs" in body
 
