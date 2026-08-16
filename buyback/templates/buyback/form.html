@@ -2,30 +2,47 @@
 {% load i18n %}
 
 {% block content %}
-  <p class="mb-4 text-text-muted">
-    {% translate "Paste your items below (copy from your in-game inventory) to get a buyback quote." %}
-  </p>
+  <div class="eve-frame bg-border-token p-px">
+    <div class="eve-fill bg-surface-raised">
+      <div class="border-b border-border-token/60 px-4 py-2">
+        <span class="text-xs uppercase tracking-[0.15em] text-text-muted">
+          {% translate "Item Appraisal" %}
+        </span>
+      </div>
 
-  <div id="result"></div>
+      <div class="p-4">
+        <p class="mb-3 text-sm text-text-muted">
+          {% translate "Paste your items below (copy from your in-game inventory) to get a buyback quote." %}
+        </p>
 
-  <form hx-post="{% url 'buyback:submit' %}" hx-target="#result" hx-swap="innerHTML"
-        class="mt-4">
-    {% csrf_token %}
-    <textarea name="raw_text" rows="12"
-              placeholder="{% translate 'Raven	1' %}&#10;{% translate 'Tritanium	1000' %}"
-              class="w-full rounded-lg border border-border-token bg-surface-raised p-3
-                     font-mono text-sm text-text placeholder:text-text-muted
-                     focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"></textarea>
-    <button type="submit"
-            class="mt-4 rounded-lg bg-accent px-5 py-2 font-medium text-accent-contrast
-                   hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-accent">
-      {% translate "Get quote" %}
-    </button>
-  </form>
+        <div id="result"></div>
 
-  {% if config.contract_to %}
-    <p class="mt-6 text-sm text-text-muted">
-      {% blocktranslate with corp=config.contract_to %}Accepted contracts go to <strong>{{ corp }}</strong>.{% endblocktranslate %}
-    </p>
-  {% endif %}
+        <form hx-post="{% url 'buyback:submit' %}" hx-target="#result" hx-swap="innerHTML"
+              class="mt-3">
+          {% csrf_token %}
+          <div class="eve-frame bg-border-token p-px focus-within:bg-accent">
+            <textarea name="raw_text" rows="12"
+                      placeholder="{% translate 'Raven	1' %}&#10;{% translate 'Tritanium	1000' %}"
+                      class="eve-fill w-full bg-surface p-3 font-mono text-sm text-text
+                             placeholder:text-text-muted focus:outline-none"></textarea>
+          </div>
+
+          <div class="mt-4 inline-block eve-frame-sm bg-accent p-px">
+            <button type="submit"
+                    class="eve-fill-sm bg-accent px-6 py-2 text-xs font-semibold uppercase
+                           tracking-[0.15em] text-accent-contrast hover:brightness-110
+                           focus:outline-none">
+              {% translate "Get quote" %}
+            </button>
+          </div>
+        </form>
+
+        {% if CONTRACT_TO %}
+          <p class="mt-5 text-xs uppercase tracking-wider text-text-muted">
+            {% blocktranslate with corp=CONTRACT_TO %}Accepted contracts go to <span class="text-accent">{{ corp }}</span>.{% endblocktranslate %}
+          </p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
 {% endblock %}
