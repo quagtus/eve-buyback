@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Quote {{ snapshot.code }}{% endblock %}
+{% block content %}
+  <h2>Quote {{ snapshot.code }}</h2>
+  <p class="muted">
+    Generated {{ snapshot.created_at }}. This page is permanent and will not change.
+    Cross-check on <a href="{{ snapshot.janice_url }}">{{ snapshot.janice_url }}</a>.
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th class="num">Qty</th>
+        <th class="num">Unit price</th>
+        <th class="num">Rate</th>
+        <th>Source</th>
+        <th class="num">Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in snapshot.items.all %}
+        <tr class="{% if item.is_flagged %}flagged{% endif %}">
+          <td>
+            {{ item.type_name }}
+            {% if item.is_flagged %}<br><small>{{ item.flag_reason }}</small>{% endif %}
+          </td>
+          <td class="num">{{ item.quantity }}</td>
+          <td class="num">{{ item.unit_price }}</td>
+          <td class="num">{{ item.percent_applied }}%</td>
+          <td>{{ item.price_source }}</td>
+          <td class="num">{{ item.line_total }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p class="total">Total offer: {{ snapshot.total_value }} ISK</p>
+
+  {% if snapshot.contract_to %}
+    <h3>How to sell</h3>
+    <p>Create an in-game contract to <strong>{{ snapshot.contract_to }}</strong>.</p>
+    {% if snapshot.contract_instructions %}
+      <p>{{ snapshot.contract_instructions|linebreaksbr }}</p>
+    {% endif %}
+  {% endif %}
+{% endblock %}

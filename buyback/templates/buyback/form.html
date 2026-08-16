@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+  <p>Paste your items below (copy from your in-game inventory) to get a buyback quote.</p>
+
+  <div id="result"></div>
+
+  <form hx-post="{% url 'buyback:submit' %}" hx-target="#result" hx-swap="innerHTML">
+    {% csrf_token %}
+    <textarea name="raw_text" placeholder="Raven	1&#10;Tritanium	1000"></textarea>
+    <button type="submit">Get quote</button>
+  </form>
+
+  {% if config.contract_to %}
+    <p class="muted">Accepted contracts go to <strong>{{ config.contract_to }}</strong>.</p>
+  {% endif %}
+{% endblock %}
