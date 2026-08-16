@@ -4313,6 +4313,62 @@ No spec requirement is unimplemented.
 
 **Type consistency check:** `PriceDecision(percent, source_kind, source_label, flagged, flag_reason)` is constructed in Task 5 and consumed in Task 13. `Rule(label, percent, category_ids, group_ids, type_ids, valid_from, valid_to)` is defined in Task 4 and constructed in Tasks 6, 8, 18. `RuleSet(blacklist_category_ids, blacklist_group_ids, blacklist_type_ids, sales, custom_rules, category_defaults)` is defined in Task 4 and built in Task 8. `AppraisalResult(code, items, failures)` is defined in Task 11, produced in Task 12, consumed in Tasks 13, 15. `resolve_price(item, ruleset, now)` and `line_total(unit_price, quantity, percent)` keep the same signatures at every call site. `Snapshot.code` is the PK everywhere; there is no second `janice_appraisal_code` field.
 
+---
+
+## Errata — bugs in this plan, found during implementation
+
+The plan was written before any code ran. These defects were discovered while executing it
+and are fixed in the codebase. They are recorded here so the plan is not trusted blindly on
+a re-run.
+
+1. **Task 1 committed the `.env` credential.** Step 11 creates a real `.env` and Step 12 ran
+   `git add .`, so a later real `JANICE_API_KEY` would land in git history. Fixed inline —
+   Task 1 Step 12 now creates `.gitignore` first and verifies `.env` is untracked.
+
+2. **Tasks 7, 9, 14 generated migrations without applying them.** `makemigrations` alone
+   leaves the dev database without the tables; the tests still pass because pytest-django
+   builds its own test DB, so the drift is silent. Always follow with
+   `docker compose exec web python manage.py migrate`.
+
+3. **Task 14's `SnapshotItem.type_name` is `max_length=255`, but Janice's `failures` is
+   arbitrary user-echoed text.** A paste line longer than 255 characters raised
+   `DataError` inside `bulk_create`, and because that ran under `transaction.atomic` it
+   rolled back the *entire* snapshot — one long junk line turned a whole quote into a 500.
+   Fixed by truncating to `MAX_TYPE_NAME_LENGTH` in `buyback/domain/quote.py`.
+
+4. **Task 15 held the DB transaction open across the Janice HTTP call.** `@transaction.atomic`
+   wrapped the whole function including a 30-second network call, pinning a pooled connection
+   on a public endpoint. Fixed: the gateway call happens outside the transaction; only the
+   two writes are wrapped.
+
+5. **Task 12 lost precision on high-value items.** `response.json()` parses JSON numbers as
+   floats, so `Decimal(str(...))` cleaned up *after* the damage — `100000000000000.01`
+   became `...02`. Fixed with `response.json(parse_float=Decimal)`.
+
+6. **Task 16's HTMX flow was broken while its tests passed.** The form uses `hx-post` with
+   `hx-target="#result"` but the view returned a 302. HTMX follows redirects transparently,
+   so the entire snapshot page got swapped into a `<div>` and the address bar never changed —
+   defeating the permanent-link feature. Django's test client sees only the 302, so the
+   plan's tests passed regardless. Fixed: return `HX-Redirect` for HTMX requests, plain 302
+   otherwise.
+
+7. **Task 17's rate limit returned 403, not 429.** `django-ratelimit` 4.x defaults to
+   `block=True`, which raises `Ratelimited` before the view body runs, so the plan's
+   `request.limited` → 429 branch was unreachable. Fixed with `block=False`.
+
+8. **Task 19 contradicted itself.** The test used `/admin/pricing/summary/` while Step 4
+   registered the view via a `RuleSummaryProxy` model at `/admin/pricing/rulesummaryproxy/`,
+   then instructed changing the test to match. Replaced with a plain URL registered ahead of
+   the admin include and wrapped in `admin.site.admin_view()` — same access control, no fake
+   model, and the URL the tests already expected.
+
+Two further issues were found by code review rather than by the plan being wrong, and are
+also fixed: same-level rule ties in `_best_match` resolved by incidental `Meta.ordering`
+(now highest-percent, deterministic), and `SiteConfig.objects.all().delete()` bypassing the
+singleton guard (now blocked by a custom manager).
+
+---
+
 **Known follow-ups, deliberately out of scope:**
 - `LocMemCache` makes rate-limit counters per-process. Fine for one Gunicorn worker; switch to Redis before scaling out.
 - The Janice response mapping is stubbed from the OpenAPI spec. Task 12 Step 5 verifies it against the live API — do not skip it.
