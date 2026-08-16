@@ -1,0 +1,11 @@
+Django==5.1.4
+psycopg[binary]==3.2.3
+gunicorn==23.0.0
+django-unfold==0.43.0
+requests==2.32.3
+ijson==3.3.0
+django-ratelimit==4.1.0
+whitenoise==6.8.2
+pytest==8.3.4
+pytest-django==4.9.0
+responses==0.25.3
