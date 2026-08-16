@@ -31,9 +31,21 @@ def test_there_are_templates_to_check():
     assert len(TEMPLATES) >= 4
 
 
+def _strip_comments(source):
+    """Comment prose must not be counted as markup.
+
+    The counts in form.html previously balanced only because a comment
+    happened to contain both the suppression string and a phrase matching
+    the indicator regex — rewording it while adding a genuinely unindicated
+    control left this test green.
+    """
+    source = re.sub(r"\{%\s*comment\s*%\}.*?\{%\s*endcomment\s*%\}", "", source, flags=re.S)
+    return re.sub(r"\{#.*?#\}", "", source, flags=re.S)
+
+
 @pytest.mark.parametrize("path", [p for p in TEMPLATES])
 def test_suppressed_outlines_have_a_replacement_indicator(path):
-    source = open(path, encoding="utf-8").read()
+    source = _strip_comments(open(path, encoding="utf-8").read())
     suppressions = source.count(SUPPRESSION)
 
     if not suppressions:

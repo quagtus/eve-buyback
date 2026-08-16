@@ -89,8 +89,10 @@
     </div>
 
     {% if quote.contract_instructions %}
-      <div class="mt-6 rounded-lg border border-border-token bg-surface-raised p-4">
-        <p class="text-sm text-text-muted">{{ quote.contract_instructions|linebreaksbr }}</p>
+      <div class="mt-6 eve-frame bg-border-token p-px">
+        <div class="eve-fill bg-surface-raised p-4">
+          <p class="text-sm text-text-muted">{{ quote.contract_instructions|linebreaksbr }}</p>
+        </div>
       </div>
     {% endif %}
   {% endif %}

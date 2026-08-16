@@ -35,10 +35,15 @@
               <img src="{{ SITE_LOGO.url }}" alt="{{ SITE_NAME }} logo"
                    class="h-10 w-10 shrink-0 object-cover border border-border-token">
             {% endif %}
-            <a href="{% url 'buyback:form' %}"
-               class="truncate text-sm font-semibold uppercase tracking-[0.2em] text-accent no-underline">
-              {{ SITE_NAME }}
-            </a>
+            <div class="min-w-0">
+              <a href="{% url 'buyback:form' %}"
+                 class="block truncate text-sm font-semibold uppercase tracking-[0.2em] text-accent no-underline">
+                {{ SITE_NAME }}
+              </a>
+              {% if SITE_DESCRIPTION %}
+                <p class="truncate text-xs text-text-muted">{{ SITE_DESCRIPTION }}</p>
+              {% endif %}
+            </div>
           </div>
 
           <div class="flex items-center gap-2">
