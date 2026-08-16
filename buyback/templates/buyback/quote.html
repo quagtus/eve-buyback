@@ -1,53 +1,7 @@
 {% extends "base.html" %}
 {% load i18n l10n buyback_labels %}
 
-{% block title %}{% blocktranslate with code=quote.code %}Quote {{ code }}{% endblocktranslate %}  <div id="copy-status" class="sr-only" role="status" aria-live="polite"></div>
-
-  <script>
-    (function () {
-      // Delegated so it covers every .copy-btn, including any added later.
-      document.addEventListener("click", function (event) {
-        var button = event.target.closest(".copy-btn");
-        if (!button) return;
-
-        var text = button.getAttribute("data-copy") || "";
-
-        function feedback() {
-          var copy = button.querySelector(".copy-icon");
-          var done = button.querySelector(".copied-icon");
-          copy.classList.add("hidden");
-          done.classList.remove("hidden");
-          document.getElementById("copy-status").textContent = "Copied";
-          setTimeout(function () {
-            copy.classList.remove("hidden");
-            done.classList.add("hidden");
-          }, 1200);
-        }
-
-        // navigator.clipboard needs a secure context; a plain http:// deploy
-        // has none, so fall back to a throwaway textarea rather than failing
-        // silently on exactly the setup most self-hosters start with.
-        if (navigator.clipboard && window.isSecureContext) {
-          navigator.clipboard.writeText(text).then(feedback, legacyCopy);
-        } else {
-          legacyCopy();
-        }
-
-        function legacyCopy() {
-          var area = document.createElement("textarea");
-          area.value = text;
-          area.setAttribute("readonly", "");
-          area.style.position = "fixed";
-          area.style.opacity = "0";
-          document.body.appendChild(area);
-          area.select();
-          try { document.execCommand("copy"); feedback(); } catch (e) {}
-          document.body.removeChild(area);
-        }
-      });
-    })();
-  </script>
-{% endblock %}
+{% block title %}{% blocktranslate with code=quote.code %}Quote {{ code }}{% endblocktranslate %}{% endblock %}
 
 {% block content %}
 
