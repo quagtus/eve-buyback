@@ -43,7 +43,16 @@ def _redirect_to_snapshot(request, snapshot):
     return redirect(url)
 
 
-@ratelimit(key="ip", rate=lambda g, r: settings.BUYBACK_RATE_LIMIT, method="POST")
+# block=False: django-ratelimit 4.x defaults to block=True, which raises
+# Ratelimited and returns a bare 403 before this view ever runs. We want our
+# own 429 response with a message, so we let the decorator just annotate
+# request.limited and check it below, before any expensive work happens.
+@ratelimit(
+    key="ip",
+    rate=lambda g, r: settings.BUYBACK_RATE_LIMIT,
+    method="POST",
+    block=False,
+)
 def submit(request):
     if request.method != "POST":
         return redirect("buyback:form")

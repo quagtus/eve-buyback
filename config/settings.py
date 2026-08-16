@@ -77,3 +77,19 @@ JANICE_BASE_URL = os.environ.get("JANICE_BASE_URL", "https://janice.e-351.com/ap
 
 # Public quote submission rate limit (see Task 17)
 BUYBACK_RATE_LIMIT = os.environ.get("BUYBACK_RATE_LIMIT", "10/h")
+
+# django-ratelimit needs a real cache backend to count requests against.
+# LocMemCache is per-process: counters are not shared across Gunicorn
+# workers, so the effective limit is "N per worker", not "N site-wide".
+# That is acceptable for a single-worker deployment; it is pinned here
+# explicitly (rather than left to Django's implicit default) so the
+# limitation is documented, not accidental. Move to a shared cache (e.g.
+# Redis) if this ever runs with more than one worker process.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "buyback-ratelimit",
+    }
+}
+
+RATELIMIT_ENABLE = os.environ.get("RATELIMIT_ENABLE", "1") == "1"
