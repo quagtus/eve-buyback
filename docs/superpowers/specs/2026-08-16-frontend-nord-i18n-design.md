@@ -91,7 +91,31 @@ The Tailwind version and CLI download URL are **pinned explicitly**, not tracked
 
 **Theme resolution**, deliberately mirroring the language rule: use `prefers-color-scheme` when the OS states one, otherwise dark. An explicit toggle overrides and persists in `localStorage`. A small inline script in `<head>` sets the root class **before first paint**, preventing the flash of wrong theme that is the usual failure mode of a JS toggle.
 
-**Contrast over fidelity.** Nord's light variant is genuinely low-contrast — `#D8DEE9` surfaces against `#4C566A` muted text sits near the WCAG AA floor. Light-mode muted text is darkened beyond literal Nord so the quote page stays readable. This is a deliberate, approved deviation.
+**Contrast over fidelity — corrected after measurement.**
+
+An earlier draft of this spec claimed light mode was the low-contrast risk. Measured WCAG ratios show the opposite, and the correction matters because dark is the default theme:
+
+- Light mode with literal Nord **passes** everywhere (5.46–10.84 for body and muted text).
+- Dark mode with literal Nord **fails twice**, and both failures are on the quote page:
+  - Nord3 `#4C566A` as muted text on Nord0 → **1.69** (needs ≥ 4.5), effectively invisible
+  - Nord11 `#BF616A` as flagged-row text on Nord0 → **3.05**, and flagged rows carry the most important information on the page (which items were rejected and why)
+- Light mode's accent also fails as link text: Nord10 `#5E81AC` on `#ECEFF4` → **3.50**
+
+The approved principle (readability over literal fidelity) stands; it simply applies where the measurements actually put the problem. The palette below is verified — every token clears WCAG AA (≥ 4.5) against both its base and raised surface.
+
+| Token | Dark | ratio | Light | ratio |
+|---|---|---|---|---|
+| `--surface` | `#2E3440` | — | `#ECEFF4` | — |
+| `--surface-raised` | `#3B4252` | — | `#FFFFFF` | — |
+| `--border` | `#4C566A` | — | `#D8DEE9` | — |
+| `--text` | `#ECEFF4` | 8.73 | `#2E3440` | 10.84 |
+| `--text-muted` | `#ACB6C6` | 4.92 | `#434C5E` | 7.49 |
+| `--accent` | `#88C0D0` | 5.03 | `#3F5A7D` | 6.13 |
+| `--accent-contrast` | `#2E3440` | 6.24 on accent | `#FFFFFF` | 7.07 on accent |
+| `--danger` | `#E0A0A6` | 4.67 | `#A54049` | 5.31 |
+| `--danger-surface` | `#3A2C2E` | 6.17 for danger text | `#F7E4E6` | 5.01 for danger text |
+
+Deviations from literal Nord, all forced by measurement: dark muted text is lightened from Nord3 to `#ACB6C6`; dark danger is lightened from Nord11 to `#E0A0A6`; light accent is darkened from Nord10 to `#3F5A7D`; light danger is darkened to `#A54049`. Surfaces, borders, and dark-mode accent remain literal Nord.
 
 **Restyle scope:** `base.html` (gains a header with theme toggle and language switcher), `form.html`, `snapshot.html`, `_error.html`, `rule_summary.html`. Unfold's admin chrome gets its accent colours tinted toward Nord via its `COLORS` setting so the admin does not clash with the public site.
 
