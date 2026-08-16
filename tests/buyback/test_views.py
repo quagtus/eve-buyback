@@ -318,5 +318,10 @@ def test_copied_isk_is_unformatted_in_every_locale(client):
 
     assert "288000000.00" in targets, f"clipboard value was localised: {targets}"
     assert "288000000,00" not in targets
-    # The visible text may still be localised — that part is intentional.
-    assert "288000000,00" in body
+
+    # The DISPLAYED figure is EVE-formatted, not locale-formatted: the game
+    # groups thousands with spaces and uses a dot decimal everywhere, so a
+    # player reading the page sees what they will type into the client. Only
+    # the clipboard value is bare.
+    assert "288 000 000.00 ISK" in body
+    assert "288000000,00" not in body, "locale formatting leaked into the display"

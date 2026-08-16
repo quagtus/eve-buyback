@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load i18n l10n buyback_labels %}
+{% load i18n l10n buyback_labels eve_formats %}
 
 {% block title %}{% blocktranslate with code=quote.code %}Quote {{ code }}{% endblocktranslate %}{% endblock %}
 
@@ -71,7 +71,7 @@
           <div class="col-span-2 my-2 border-t border-[#4a5568]"></div>
 
           <dt class="font-bold text-gray-100">{% translate "I will receive" %}</dt>
-          <dd class="tabular-nums">{{ quote.total_value }} ISK{% include "buyback/_copy_button.html" with value=quote.total_value|unlocalize label=_("ISK amount") %}</dd>
+          <dd class="tabular-nums">{{ quote.total_value|isk }}{% include "buyback/_copy_button.html" with value=quote.total_value|unlocalize label=_("ISK amount") %}</dd>
         </dl>
       </div>
 
@@ -133,11 +133,11 @@
                     <div class="text-[11px] uppercase tracking-wider">{{ item|flag_reason_label }}</div>
                   {% endif %}
                 </td>
-                <td class="px-3 py-1.5 text-right font-mono tabular-nums">{{ item.quantity }}</td>
-                <td class="px-3 py-1.5 text-right font-mono tabular-nums">{{ item.unit_price }}</td>
+                <td class="px-3 py-1.5 text-right font-mono tabular-nums">{{ item.quantity|num_fmt }}</td>
+                <td class="px-3 py-1.5 text-right font-mono tabular-nums">{{ item.unit_price|num_fmt }}</td>
                 <td class="px-3 py-1.5 text-right font-mono tabular-nums">{{ item.percent_applied }}%</td>
                 <td class="px-3 py-1.5 text-xs text-text-muted">{{ item|price_source_label }}</td>
-                <td class="px-3 py-1.5 text-right font-mono tabular-nums">{{ item.line_total }}</td>
+                <td class="px-3 py-1.5 text-right font-mono tabular-nums">{{ item.line_total|num_fmt }}</td>
               </tr>
             {% endfor %}
           </tbody>
@@ -149,7 +149,7 @@
           {% translate "Total offer" %}
         </span>
         <span class="font-mono text-2xl font-bold tabular-nums text-accent">
-          {{ quote.total_value }} ISK
+          {{ quote.total_value|isk }}
         </span>
       </div>
     </div>

@@ -1,44 +1,137 @@
 {% extends "admin/base_site.html" %}
+{% load eve_formats %}
+
+{% comment %}
+Styling is a scoped <style> block, not Tailwind classes: this template extends
+admin/base_site.html, which does not load the site's app.css, so utility classes
+would not resolve here.
+
+Colours hang off CSS custom properties keyed to `html.dark`. Unfold sets that
+class for an explicit dark choice AND for auto-mode when the OS prefers dark:
+
+  x-bind:class="{'dark': adminTheme === 'dark'
+                 || (adminTheme === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches)}"
+
+so hooking .dark alone covers every case. An additional prefers-color-scheme
+media query would double-apply in auto mode.
+
+The previous version hardcoded light values, which scored 2.49:1 on Unfold's
+dark background and rendered the table header as a glaring white band.
+
+This page is NOT translated: the admin is English by product decision, enforced
+by AdminEnglishMiddleware.
+{% endcomment %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+  .rs {
+    --rs-text: #1f2a33;
+    --rs-muted: #4a5a66;
+    --rs-border: #c2ccd2;
+    --rs-head-bg: #e4e9ec;
+    --rs-row-bg: transparent;
+    --rs-accent: #8a5000;
+    --rs-danger: #a3231f;
+  }
+  html.dark .rs {
+    --rs-text: #cfd8dc;
+    --rs-muted: #8fa3ad;
+    --rs-border: #2a3c4d;
+    --rs-head-bg: #0b131a;
+    --rs-row-bg: transparent;
+    --rs-accent: #fca311;
+    --rs-danger: #e57373;
+  }
+
+  .rs { color: var(--rs-text); }
+  .rs-intro { color: var(--rs-muted); max-width: 62ch; margin: .25rem 0 1rem; }
+
+  .rs-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--rs-border);
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
+  }
+  .rs-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .rs-table thead { background: var(--rs-head-bg); }
+  .rs-table th {
+    text-align: left; padding: 8px 12px; font-size: 11px; font-weight: 600;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--rs-muted);
+  }
+  .rs-table td { padding: 8px 12px; border-top: 1px solid var(--rs-border); }
+  .rs-num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  .rs-kind { display: inline-flex; align-items: center; gap: .5rem; white-space: nowrap; }
+  .rs-icon { width: 15px; height: 15px; flex: none; color: var(--rs-muted); }
+  /* Selectors key off the icon slug, which is what rs-kind-{{ row.icon }} emits. */
+  .rs-kind-ban .rs-icon { color: var(--rs-danger); }
+  .rs-kind-tag .rs-icon { color: var(--rs-accent); }
+
+  .rs-status { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+  .rs-status-expired { color: var(--rs-muted); }
+  .rs-status-scheduled { color: var(--rs-accent); }
+
+  .rs-empty { padding: 14px 12px; color: var(--rs-muted); }
+</style>
+{% endblock %}
 
 {% block content %}
+<div class="rs">
   <h1>Rule summary</h1>
-  <p style="color:#4a5a66;max-width:60ch">
+  <p class="rs-intro">
     Ordered by precedence: blacklist beats sales, sales beat custom rules,
     custom rules beat category defaults. Within a tier, the most specific
-    match wins.
+    match wins. A rule targeting several levels appears once per level.
   </p>
 
-  <div style="overflow-x:auto;border:1px solid #c2ccd2;margin-top:1rem;
-              clip-path:polygon(0 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%)">
-    <table style="width:100%;border-collapse:collapse;font-size:14px">
-      <thead style="background:#e4e9ec">
+  <div class="rs-table-wrap">
+    <table class="rs-table">
+      <thead>
         <tr>
-          <th style="text-align:left;padding:8px 12px">Tier</th>
-          <th style="text-align:left;padding:8px 12px">Rule</th>
-          <th style="text-align:left;padding:8px 12px">Level</th>
-          <th style="text-align:left;padding:8px 12px">Targets</th>
-          <th style="text-align:right;padding:8px 12px">Percent</th>
-          <th style="text-align:left;padding:8px 12px">Status</th>
-          <th style="text-align:left;padding:8px 12px">Window</th>
+          <th>Tier</th>
+          <th>Rule</th>
+          <th>Level</th>
+          <th>Targets</th>
+          <th class="rs-num">Percent</th>
+          <th>Status</th>
+          <th>Window</th>
         </tr>
       </thead>
       <tbody>
         {% for row in rows %}
-          <tr style="border-top:1px solid #c2ccd2">
-            <td style="padding:8px 12px">{{ row.kind }}</td>
-            <td style="padding:8px 12px">{{ row.label }}</td>
-            <td style="padding:8px 12px">{{ row.level }}</td>
-            <td style="padding:8px 12px">{{ row.targets|join:", "|truncatechars:80 }}</td>
-            <td style="padding:8px 12px;text-align:right">
-              {% if row.percent is not None %}{{ row.percent }}%{% else %}—{% endif %}
+          <tr>
+            <td>
+              <span class="rs-kind rs-kind-{{ row.icon }}">
+                <svg class="rs-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                     aria-hidden="true">
+                  {% if row.icon == "ban" %}
+                    <circle cx="12" cy="12" r="9"></circle><path d="M5.6 5.6l12.8 12.8"></path>
+                  {% elif row.icon == "tag" %}
+                    <path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9-9-9z"></path><circle cx="7.5" cy="7.5" r="1.5"></circle>
+                  {% elif row.icon == "sliders" %}
+                    <path d="M4 7h16M4 17h16"></path><circle cx="9" cy="7" r="2.5"></circle><circle cx="16" cy="17" r="2.5"></circle>
+                  {% else %}
+                    <path d="M12 3l9 5-9 5-9-5 9-5z"></path><path d="M3 13l9 5 9-5"></path>
+                  {% endif %}
+                </svg>
+                {{ row.kind }}
+              </span>
             </td>
-            <td style="padding:8px 12px">{{ row.status }}</td>
-            <td style="padding:8px 12px">{{ row.window }}</td>
+            <td>{{ row.label }}</td>
+            <td>{{ row.level }}</td>
+            <td>{{ row.targets|join:", "|truncatechars:80 }}</td>
+            <td class="rs-num">
+              {% if row.percent is not None %}{{ row.percent|num_fmt }}%{% else %}&mdash;{% endif %}
+            </td>
+            <td><span class="rs-status rs-status-{{ row.status }}">{{ row.status }}</span></td>
+            <td>{{ row.window }}</td>
           </tr>
         {% empty %}
-          <tr><td colspan="7" style="padding:12px">No rules configured yet.</td></tr>
+          <tr><td class="rs-empty" colspan="7">No rules configured yet.</td></tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
+</div>
 {% endblock %}

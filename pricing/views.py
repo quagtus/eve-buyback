@@ -13,6 +13,15 @@ from pricing.models import BlacklistEntry, CategoryDefaultPercent, CustomRule, S
 
 LEVEL_ORDER = {"Type": 0, "Group": 1, "Category": 2}
 
+# Icon key per rule kind, resolved to an inline SVG in the template. Kept as
+# a stable slug rather than markup so the view stays presentation-agnostic.
+KIND_ICONS = {
+    "Blacklist": "ban",
+    "Sale": "tag",
+    "Custom rule": "sliders",
+    "Category default": "layers",
+}
+
 
 def _targets(instance):
     """One row per match level the rule actually targets."""
@@ -84,6 +93,9 @@ def build_summary_rows(now: datetime) -> list[dict]:
             "status": "active",
             "window": "",
         })
+
+    for row in rows:
+        row["icon"] = KIND_ICONS[row["kind"]]
 
     kind_order = {"Blacklist": 0, "Sale": 1, "Custom rule": 2, "Category default": 3}
     rows.sort(key=lambda r: (kind_order[r["kind"]], LEVEL_ORDER[r["level"]], r["label"]))
