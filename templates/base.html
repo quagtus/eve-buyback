@@ -26,51 +26,51 @@
     <link rel="stylesheet" href="{% static 'css/app.css' %}">
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
   </head>
-  <body class="bg-surface text-text antialiased">
+  <body class="bg-surface text-text antialiased text-[15px]">
     <div class="mx-auto max-w-5xl px-4 py-8">
-      <header class="mb-8 flex items-center justify-between gap-4 border-b border-border-token pb-4">
-        {% if SITE_LOGO %}
-          {% comment %} Guarded: .url raises ValueError when no file has been uploaded,
-             which is the default state of a fresh install. {% endcomment %}
-          <img src="{{ SITE_LOGO.url }}" alt="{{ SITE_NAME }} logo"
-               class="h-24 w-24 shrink-0 object-cover rounded-full border border-border-token">
-        {% endif %}
-        <a href="{% url 'buyback:form' %}"
-           class="text-xl font-semibold tracking-tight text-text no-underline">
-          {{ SITE_NAME }}
-        </a>
-        <div class="flex-1 text-sm text-text-muted truncate">
-          {% block description %}{% endblock %}
-        {{ SITE_DESCRIPTION }}
-        </div>
+      <header class="mb-8 border-b border-border-token">
+        <div class="flex items-center justify-between gap-4 py-3">
+          <div class="flex items-center gap-3 min-w-0">
+            {% if SITE_LOGO %}
+              <img src="{{ SITE_LOGO.url }}" alt="{{ SITE_NAME }} logo"
+                   class="h-10 w-10 shrink-0 object-cover border border-border-token">
+            {% endif %}
+            <a href="{% url 'buyback:form' %}"
+               class="truncate text-sm font-semibold uppercase tracking-[0.2em] text-accent no-underline">
+              {{ SITE_NAME }}
+            </a>
+          </div>
 
-        <div class="flex items-center gap-3">
-          {% if LANGUAGES|length > 1 %}
-            <form action="{% url 'set_language' %}" method="post"
-                  hx-post="{% url 'set_language' %}" hx-target="body" hx-swap="outerHTML">
-              {% csrf_token %}
-              <input type="hidden" name="next" value="{{ request.path }}">
-              <label class="sr-only" for="lang">{% translate "Language" %}</label>
-              <select id="lang" name="language" onchange="this.form.requestSubmit()"
-                      class="rounded-md border border-border-token bg-surface-raised px-2 py-1
-                             text-sm text-text">
-                {% get_current_language as CURRENT %}
-                {% for code, name in LANGUAGES %}
-                  <option value="{{ code }}" {% if code == CURRENT %}selected{% endif %}>
-                    {{ name }}
-                  </option>
-                {% endfor %}
-              </select>
-            </form>
-          {% endif %}
+          <div class="flex items-center gap-2">
+            {% if LANGUAGES|length > 1 %}
+              <form action="{% url 'set_language' %}" method="post"
+                    hx-post="{% url 'set_language' %}" hx-target="body" hx-swap="outerHTML">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.path }}">
+                <label class="sr-only" for="lang">{% translate "Language" %}</label>
+                <div class="eve-frame-sm bg-border-token p-px focus-within:bg-accent">
+                  <select id="lang" name="language" onchange="this.form.requestSubmit()"
+                          class="eve-fill-sm bg-surface-raised px-2 py-1 text-xs uppercase
+                                 tracking-wider text-text focus:outline-none">
+                    {% get_current_language as CURRENT %}
+                    {% for code, name in LANGUAGES %}
+                      <option value="{{ code }}" {% if code == CURRENT %}selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+              </form>
+            {% endif %}
 
-          <button type="button" id="theme-toggle"
-                  aria-label="{% translate 'Toggle colour theme' %}"
-                  class="rounded-md border border-border-token bg-surface-raised px-3 py-1
-                         text-sm text-text hover:text-accent">
-            <span class="dark:hidden">☾</span>
-            <span class="hidden dark:inline">☀</span>
-          </button>
+            <div class="eve-frame-sm bg-border-token p-px focus-within:bg-accent">
+              <button type="button" id="theme-toggle"
+                      aria-label="{% translate 'Toggle colour theme' %}"
+                      class="eve-fill-sm bg-surface-raised px-3 py-1 text-xs text-text
+                             hover:text-accent focus:outline-none">
+                <span class="dark:hidden">☾</span>
+                <span class="hidden dark:inline">☀</span>
+              </button>
+            </div>
+          </div>
         </div>
       </header>
 
