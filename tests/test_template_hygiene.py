@@ -49,7 +49,12 @@ def test_title_block_contains_no_markup_or_script(path):
     """
     source = open(path, encoding="utf-8").read()
 
-    match = re.search(r"\{%\s*block title\s*%\}(.*?)\{%\s*endblock", source, re.S)
+    # `endblock` must be the whole tag name: a lazy match on "endblock" alone
+    # also matches {% endblocktranslate %}, which stops the capture early and
+    # makes this check vacuous for exactly the template it guards.
+    match = re.search(
+        r"\{%\s*block title\s*%\}(.*?)\{%\s*endblock\s*%\}", source, re.S
+    )
     if not match:
         pytest.skip("template defines no title block")
 
