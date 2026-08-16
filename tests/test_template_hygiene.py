@@ -36,3 +36,28 @@ def test_no_multiline_django_comments(path):
         f"{path}: multi-line {{# #}} comment renders as visible text. "
         f"Use {{% comment %}}...{{% endcomment %}}. Found: {offenders}"
     )
+
+
+@pytest.mark.parametrize("path", TEMPLATES)
+def test_title_block_contains_no_markup_or_script(path):
+    """`{% block title %}` renders inside <title>, which is text-only.
+
+    Regression: a mis-scoped edit consumed the title block's {% endblock %} and
+    the whole clipboard script ended up inside <title> — browser tabs showed
+    1740 characters of JavaScript. Every test still passed, because none of
+    them looked at the title.
+    """
+    source = open(path, encoding="utf-8").read()
+
+    match = re.search(r"\{%\s*block title\s*%\}(.*?)\{%\s*endblock", source, re.S)
+    if not match:
+        pytest.skip("template defines no title block")
+
+    body = match.group(1)
+
+    assert "<script" not in body, f"{path}: <script> inside the title block"
+    assert "<div" not in body, f"{path}: <div> inside the title block"
+    assert len(body) < 200, (
+        f"{path}: title block is {len(body)} chars — it has probably swallowed "
+        f"content that belongs in another block"
+    )
