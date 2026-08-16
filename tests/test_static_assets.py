@@ -44,7 +44,10 @@ def test_no_js_visitors_get_the_dark_theme():
     exclusively by the pre-paint script. With JS disabled the light block
     applied unconditionally — the opposite of the stated default.
     """
-    css = open(finders.find("css/app.css"), encoding="utf-8").read().lower()
+    raw = open(finders.find("css/app.css"), encoding="utf-8").read().lower()
+    # Normalise whitespace: the dev --watch build is unminified while the
+    # image build passes --minify, so spacing around ":" and ";" differs.
+    css = re.sub(r"\s+", "", raw)
 
     # Match the token block specifically. A naive search for the first ":root"
     # finds Tailwind's own preflight block, which carries no design tokens.
@@ -55,7 +58,7 @@ def test_no_js_visitors_get_the_dark_theme():
     assert "--surface:#2e3440" in by_selector[":root"], (
         "bare :root must carry the DARK surface so no-JS visitors get dark"
     )
-    assert "prefers-color-scheme:light" in css.replace(" ", ""), (
+    assert "prefers-color-scheme:light" in css, (
         "no OS-preference fallback: light mode unreachable without JS"
     )
     assert ":root.light" in by_selector, "explicit light override missing"
