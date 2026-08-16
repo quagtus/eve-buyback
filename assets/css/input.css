@@ -1,0 +1,52 @@
+@import "tailwindcss" source(none);
+
+@source "../../templates";
+@source "../../buyback/templates";
+@source "../../pricing/templates";
+
+/* Class-based dark mode: the root <html> carries .dark */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Nord, expressed as semantic roles. Values are WCAG-AA verified —
+   see the plan's Verified External Facts table. Literal Nord fails
+   contrast for dark muted text, dark danger text, and light accent. */
+:root {
+  --surface: #ECEFF4;
+  --surface-raised: #FFFFFF;
+  --border: #D8DEE9;
+  --text: #2E3440;
+  --text-muted: #434C5E;
+  --accent: #3F5A7D;
+  --accent-contrast: #FFFFFF;
+  --danger: #A54049;
+  --danger-surface: #F7E4E6;
+}
+
+:root.dark {
+  --surface: #2E3440;
+  --surface-raised: #3B4252;
+  --border: #4C566A;
+  --text: #ECEFF4;
+  --text-muted: #ACB6C6;
+  --accent: #88C0D0;
+  --accent-contrast: #2E3440;
+  --danger: #E0A0A6;
+  --danger-surface: #3A2C2E;
+}
+
+@theme {
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-border-token: var(--border);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-accent: var(--accent);
+  --color-accent-contrast: var(--accent-contrast);
+  --color-danger: var(--danger);
+  --color-danger-surface: var(--danger-surface);
+}
+
+body {
+  background-color: var(--surface);
+  color: var(--text);
+}
