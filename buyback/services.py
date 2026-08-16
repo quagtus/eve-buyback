@@ -7,7 +7,7 @@ from django.utils import timezone
 from buyback.domain.gateway import PriceAppraisalGateway
 from buyback.domain.quote import build_quote
 from buyback.infrastructure.janice import JaniceAppraisalGateway
-from buyback.models import Snapshot, SnapshotItem
+from buyback.models import Quote, QuoteItem
 from catalog.models import EveType
 from pricing.domain.ruleset import ItemClassification
 from pricing.repositories import load_ruleset
@@ -15,11 +15,11 @@ from siteconfig.models import SiteConfig
 
 
 class EmptyAppraisalError(RuntimeError):
-    """Nothing in the paste could be priced, so there is nothing to snapshot."""
+    """Nothing in the paste could be priced, so there is nothing to quote."""
 
 
-class DuplicateSnapshotError(RuntimeError):
-    """A snapshot with this Janice code already exists."""
+class DuplicateQuoteError(RuntimeError):
+    """A quote with this Janice code already exists."""
 
 
 def build_default_gateway(config: SiteConfig | None = None) -> JaniceAppraisalGateway:
@@ -47,9 +47,9 @@ def _classifications(type_ids) -> dict[int, ItemClassification]:
     }
 
 
-def generate_snapshot(
+def generate_quote(
     raw_text: str, gateway: PriceAppraisalGateway | None = None
-) -> Snapshot:
+) -> Quote:
     config = SiteConfig.load()
     gateway = gateway or build_default_gateway(config)
 
@@ -69,16 +69,16 @@ def generate_snapshot(
     # broken transaction cleanly before we raise the domain-level error.
     try:
         with transaction.atomic():
-            snapshot = Snapshot.objects.create(
+            quote = Quote.objects.create(
                 code=quote.code,
                 total_value=quote.total_value,
                 contract_to=config.contract_to,
                 contract_instructions=config.contract_instructions,
             )
-            SnapshotItem.objects.bulk_create(
+            QuoteItem.objects.bulk_create(
                 [
-                    SnapshotItem(
-                        snapshot=snapshot,
+                    QuoteItem(
+                        quote=quote,
                         type_id=line.type_id,
                         type_name=line.type_name,
                         quantity=line.quantity,
@@ -94,7 +94,7 @@ def generate_snapshot(
                 ]
             )
     except IntegrityError as exc:
-        raise DuplicateSnapshotError(
-            f"A snapshot with code {quote.code!r} already exists."
+        raise DuplicateQuoteError(
+            f"A quote with code {quote.code!r} already exists."
         ) from exc
-    return snapshot
+    return quote

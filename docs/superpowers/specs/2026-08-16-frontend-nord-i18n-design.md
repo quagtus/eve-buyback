@@ -7,7 +7,7 @@ Replace the hand-written CSS in `templates/base.html` with a Tailwind-built Nord
 Three constraints shape everything below:
 
 - The domain layer (`pricing/domain/`, `buyback/domain/`) must stay Django-free, so it cannot call `gettext`. Translation happens at the presentation layer only.
-- Snapshots are frozen forever. Whatever is stored must remain a stable record.
+- Quotes are frozen forever. Whatever is stored must remain a stable record.
 - Only strings that belong to **buyback** get translated. Anything originating from EVE, or authored by the admin as data, is left verbatim.
 
 ## 2. The Translation Boundary
@@ -21,7 +21,7 @@ Every user-visible string falls into one of four buckets:
 | Buyback system labels | `Blacklisted`, `No rule configured` | Yes |
 | UI chrome | `Total offer`, `Get quote` | Yes |
 
-The current schema cannot express this boundary. `SnapshotItem.price_source` holds *either* a system label (`'Blacklisted'`) or an admin rule name (`'Raven Special'`), so at render time the two are indistinguishable — a rule literally named "Blacklisted" would be ambiguous. Splitting the column is what makes the boundary enforceable rather than a convention.
+The current schema cannot express this boundary. `QuoteItem.price_source` holds *either* a system label (`'Blacklisted'`) or an admin rule name (`'Raven Special'`), so at render time the two are indistinguishable — a rule literally named "Blacklisted" would be ambiguous. Splitting the column is what makes the boundary enforceable rather than a convention.
 
 ## 3. Data Model Changes
 
@@ -32,7 +32,7 @@ The current schema cannot express this boundary. `SnapshotItem.price_source` hol
 
 ### Persistence
 
-`SnapshotItem`:
+`QuoteItem`:
 
 - `price_source` → **split** into:
   - `price_source_kind` — enum key (`BLACKLIST` / `SALE` / `CUSTOM` / `CATEGORY_DEFAULT` / `NONE`)
@@ -117,11 +117,11 @@ The approved principle (readability over literal fidelity) stands; it simply app
 
 Deviations from literal Nord, all forced by measurement: dark muted text is lightened from Nord3 to `#ACB6C6`; dark danger is lightened from Nord11 to `#E0A0A6`; light accent is darkened from Nord10 to `#3F5A7D`; light danger is darkened to `#A54049`. Surfaces, borders, and dark-mode accent remain literal Nord.
 
-**Restyle scope:** `base.html` (gains a header with theme toggle and language switcher), `form.html`, `snapshot.html`, `_error.html`, `rule_summary.html`. Unfold's admin chrome gets its accent colours tinted toward Nord via its `COLORS` setting so the admin does not clash with the public site.
+**Restyle scope:** `base.html` (gains a header with theme toggle and language switcher), `form.html`, `quote.html`, `_error.html`, `rule_summary.html`. Unfold's admin chrome gets its accent colours tinted toward Nord via its `COLORS` setting so the admin does not clash with the public site.
 
 ## 7. Testing
 
-**Existing suite.** All 101 tests must continue to pass. The `SnapshotItem` field split touches assertions in `test_quote.py`, `test_services.py`, and `test_views.py`; those are updated to assert on keys, which is stricter than matching English prose.
+**Existing suite.** All 101 tests must continue to pass. The `QuoteItem` field split touches assertions in `test_quote.py`, `test_services.py`, and `test_views.py`; those are updated to assert on keys, which is stricter than matching English prose.
 
 **New coverage:**
 
@@ -135,7 +135,7 @@ Deviations from literal Nord, all forced by measurement: dark muted text is ligh
 
 ## 8. Risks
 
-- **The data migration** rewrites frozen snapshot rows. It ships with a reverse migration and is verified against the real existing rows before commit.
+- **The data migration** rewrites frozen quote rows. It ships with a reverse migration and is verified against the real existing rows before commit.
 - **The Tailwind CLI** is a new external build-time dependency. Pinned by version; if the URL moves, image builds fail loudly rather than silently producing stale CSS.
 
 ## 9. Out of Scope

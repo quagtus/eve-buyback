@@ -131,7 +131,7 @@ UNFOLD = {
             {
                 "title": "Buyback",
                 "items": [
-                    {"title": "Quotes", "link": "/admin/buyback/snapshot/"},
+                    {"title": "Quotes", "link": "/admin/buyback/quote/"},
                     {"title": "Settings", "link": "/admin/siteconfig/siteconfig/"},
                 ],
             },

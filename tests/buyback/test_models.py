@@ -2,27 +2,27 @@ from decimal import Decimal
 
 import pytest
 
-from buyback.models import Snapshot, SnapshotItem
+from buyback.models import Quote, QuoteItem
 
 
 @pytest.mark.django_db
-def test_snapshot_is_keyed_by_the_janice_code():
-    snapshot = Snapshot.objects.create(
+def test_quote_is_keyed_by_the_janice_code():
+    quote = Quote.objects.create(
         code="4ovArs",
         total_value=Decimal("140.00"),
         contract_to="Buyback Corp",
         contract_instructions="Contract to Buyback Corp in Jita.",
     )
 
-    assert snapshot.pk == "4ovArs"
-    assert Snapshot.objects.get(pk="4ovArs").total_value == Decimal("140.00")
+    assert quote.pk == "4ovArs"
+    assert Quote.objects.get(pk="4ovArs").total_value == Decimal("140.00")
 
 
 @pytest.mark.django_db
-def test_snapshot_items_store_kind_and_label_separately():
-    snapshot = Snapshot.objects.create(code="4ovArs", total_value=Decimal("140.00"))
-    SnapshotItem.objects.create(
-        snapshot=snapshot,
+def test_quote_items_store_kind_and_label_separately():
+    quote = Quote.objects.create(code="4ovArs", total_value=Decimal("140.00"))
+    QuoteItem.objects.create(
+        quote=quote,
         type_id=638,
         type_name="Raven",
         quantity=2,
@@ -33,7 +33,7 @@ def test_snapshot_items_store_kind_and_label_separately():
         line_total=Decimal("140.00"),
     )
 
-    item = snapshot.items.get()
+    item = quote.items.get()
     assert item.price_source_kind == "CUSTOM"
     assert item.price_source_label == "Battleships"
     assert item.flag_reason_code is None
@@ -42,9 +42,9 @@ def test_snapshot_items_store_kind_and_label_separately():
 
 @pytest.mark.django_db
 def test_system_source_has_no_rule_label():
-    snapshot = Snapshot.objects.create(code="abc", total_value=Decimal("0.00"))
-    SnapshotItem.objects.create(
-        snapshot=snapshot,
+    quote = Quote.objects.create(code="abc", total_value=Decimal("0.00"))
+    QuoteItem.objects.create(
+        quote=quote,
         type_id=587,
         type_name="Rifter",
         quantity=1,
@@ -57,17 +57,17 @@ def test_system_source_has_no_rule_label():
         flag_reason_code="BLACKLISTED",
     )
 
-    item = snapshot.items.get()
+    item = quote.items.get()
     assert item.price_source_label == ""
     assert item.flag_reason_code == "BLACKLISTED"
 
 
 @pytest.mark.django_db
 def test_item_count_property():
-    snapshot = Snapshot.objects.create(code="abc", total_value=Decimal("0.00"))
+    quote = Quote.objects.create(code="abc", total_value=Decimal("0.00"))
     for index in range(3):
-        SnapshotItem.objects.create(
-            snapshot=snapshot,
+        QuoteItem.objects.create(
+            quote=quote,
             type_id=index,
             type_name=f"Item {index}",
             quantity=1,
@@ -78,14 +78,14 @@ def test_item_count_property():
             line_total=Decimal("1.00"),
         )
 
-    assert snapshot.item_count == 3
+    assert quote.item_count == 3
 
 
 @pytest.mark.django_db
 def test_flagged_item_stores_its_reason():
-    snapshot = Snapshot.objects.create(code="abc", total_value=Decimal("0.00"))
-    SnapshotItem.objects.create(
-        snapshot=snapshot,
+    quote = Quote.objects.create(code="abc", total_value=Decimal("0.00"))
+    QuoteItem.objects.create(
+        quote=quote,
         type_id=None,
         type_name="garbage line",
         quantity=0,
@@ -97,4 +97,4 @@ def test_flagged_item_stores_its_reason():
         flag_reason_code="UNPARSEABLE",
     )
 
-    assert snapshot.items.get().flag_reason_code == "UNPARSEABLE"
+    assert quote.items.get().flag_reason_code == "UNPARSEABLE"

@@ -4,19 +4,19 @@ import pytest
 from django.urls import reverse
 
 from buyback.domain.appraisal import AppraisalItem, AppraisalResult
-from buyback.models import Snapshot, SnapshotItem
+from buyback.models import Quote, QuoteItem
 
 
 @pytest.fixture
-def priced_snapshot(db):
-    snapshot = Snapshot.objects.create(
+def priced_quote(db):
+    quote = Quote.objects.create(
         code="4ovArs",
         total_value=Decimal("140.00"),
         contract_to="Buyback Corp",
         contract_instructions="Contract to Buyback Corp in Jita.",
     )
-    SnapshotItem.objects.create(
-        snapshot=snapshot,
+    QuoteItem.objects.create(
+        quote=quote,
         type_id=638,
         type_name="Raven",
         quantity=2,
@@ -26,8 +26,8 @@ def priced_snapshot(db):
         price_source_label="Battleships",
         line_total=Decimal("140.00"),
     )
-    SnapshotItem.objects.create(
-        snapshot=snapshot,
+    QuoteItem.objects.create(
+        quote=quote,
         type_id=587,
         type_name="Rifter",
         quantity=1,
@@ -38,7 +38,7 @@ def priced_snapshot(db):
         is_flagged=True,
         flag_reason_code="BLACKLISTED",
     )
-    return snapshot
+    return quote
 
 
 @pytest.mark.django_db
@@ -50,8 +50,8 @@ def test_form_page_renders(client):
 
 
 @pytest.mark.django_db
-def test_snapshot_page_shows_items_totals_and_flags(client, priced_snapshot):
-    response = client.get(reverse("buyback:snapshot", args=["4ovArs"]))
+def test_quote_page_shows_items_totals_and_flags(client, priced_quote):
+    response = client.get(reverse("buyback:quote", args=["4ovArs"]))
 
     assert response.status_code == 200
     body = response.content.decode()
@@ -63,12 +63,12 @@ def test_snapshot_page_shows_items_totals_and_flags(client, priced_snapshot):
 
 
 @pytest.mark.django_db
-def test_unknown_snapshot_returns_404(client):
-    assert client.get(reverse("buyback:snapshot", args=["nope"])).status_code == 404
+def test_unknown_quote_returns_404(client):
+    assert client.get(reverse("buyback:quote", args=["nope"])).status_code == 404
 
 
 @pytest.mark.django_db
-def test_submitting_redirects_to_the_new_snapshot(client, monkeypatch, settings):
+def test_submitting_redirects_to_the_new_quote(client, monkeypatch, settings):
     settings.BUYBACK_RATE_LIMIT = "1000/h"
 
     class StubGateway:
@@ -88,7 +88,7 @@ def test_submitting_redirects_to_the_new_snapshot(client, monkeypatch, settings)
     response = client.post(reverse("buyback:submit"), {"raw_text": "Raven\t1"})
 
     assert response.status_code == 302
-    assert response.url == reverse("buyback:snapshot", args=["newcode"])
+    assert response.url == reverse("buyback:quote", args=["newcode"])
 
 
 @pytest.mark.django_db
@@ -99,7 +99,7 @@ def test_empty_paste_is_rejected_without_calling_the_gateway(client, settings):
 
     assert response.status_code == 200
     assert b"Paste" in response.content
-    assert Snapshot.objects.count() == 0
+    assert Quote.objects.count() == 0
 
 
 @pytest.mark.django_db
@@ -135,14 +135,14 @@ def test_htmx_submit_returns_hx_redirect_header_instead_of_302(
 
     assert response.status_code in (200, 204)
     assert response.headers.get("HX-Redirect") == reverse(
-        "buyback:snapshot", args=["htmxcode"]
+        "buyback:quote", args=["htmxcode"]
     )
     # Must not be a redirect status; HTMX would just follow it via fetch again.
     assert response.status_code != 302
 
 
 @pytest.mark.django_db
-def test_duplicate_snapshot_code_renders_error_partial_instead_of_500(
+def test_duplicate_quote_code_renders_error_partial_instead_of_500(
     client, monkeypatch, settings
 ):
     settings.BUYBACK_RATE_LIMIT = "1000/h"
@@ -167,7 +167,7 @@ def test_duplicate_snapshot_code_renders_error_partial_instead_of_500(
     second = client.post(reverse("buyback:submit"), {"raw_text": "Raven\t1"})
     assert second.status_code == 200
     assert b"already exists" in second.content
-    assert Snapshot.objects.filter(pk="dupecode").count() == 1
+    assert Quote.objects.filter(pk="dupecode").count() == 1
 
 
 @pytest.mark.django_db
@@ -191,5 +191,5 @@ def test_non_htmx_submit_still_returns_a_plain_302(client, monkeypatch, settings
     response = client.post(reverse("buyback:submit"), {"raw_text": "Raven\t1"})
 
     assert response.status_code == 302
-    assert response.url == reverse("buyback:snapshot", args=["plaincode"])
+    assert response.url == reverse("buyback:quote", args=["plaincode"])
     assert "HX-Redirect" not in response.headers

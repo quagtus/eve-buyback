@@ -19,7 +19,7 @@ __all__ = ["FlagReason", "Quote", "QuoteLine", "build_quote"]
 
 ZERO_ISK = Decimal("0.00")
 
-# Mirrors SnapshotItem.type_name's column width (CharField(max_length=255)).
+# Mirrors QuoteItem.type_name's column width (CharField(max_length=255)).
 # Failure text and item names are upstream/user-echoed data we don't control,
 # so they must be truncated before they ever reach persistence.
 MAX_TYPE_NAME_LENGTH = 255

@@ -2,11 +2,11 @@ from django.contrib import admin
 from django.utils.html import format_html
 from unfold.admin import ModelAdmin, TabularInline
 
-from buyback.models import Snapshot, SnapshotItem
+from buyback.models import Quote, QuoteItem
 
 
-class SnapshotItemInline(TabularInline):
-    model = SnapshotItem
+class QuoteItemInline(TabularInline):
+    model = QuoteItem
     extra = 0
     can_delete = False
     fields = [
@@ -19,14 +19,14 @@ class SnapshotItemInline(TabularInline):
         return False
 
 
-@admin.register(Snapshot)
-class SnapshotAdmin(ModelAdmin):
+@admin.register(Quote)
+class QuoteAdmin(ModelAdmin):
     """Quotes are immutable records — read-only bookkeeping only."""
 
     list_display = ["code", "created_at", "total_value", "item_count", "public_link"]
     search_fields = ["code"]
     date_hierarchy = "created_at"
-    inlines = [SnapshotItemInline]
+    inlines = [QuoteItemInline]
     readonly_fields = [
         "code", "created_at", "total_value", "contract_to", "contract_instructions",
     ]

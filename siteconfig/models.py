@@ -53,7 +53,7 @@ class SiteConfig(models.Model):
     )
     contract_instructions = models.TextField(
         blank=True,
-        help_text="Shown on every quote and frozen into each snapshot.",
+        help_text="Shown on every quote and frozen into each quote.",
     )
 
     class Meta:

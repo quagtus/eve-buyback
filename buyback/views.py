@@ -5,12 +5,12 @@ from django.urls import reverse
 from django_ratelimit.decorators import ratelimit
 
 from buyback.domain.gateway import AppraisalError
-from buyback.models import Snapshot
+from buyback.models import Quote
 from buyback.services import (
-    DuplicateSnapshotError,
+    DuplicateQuoteError,
     EmptyAppraisalError,
     build_default_gateway,
-    generate_snapshot,
+    generate_quote,
 )
 from siteconfig.models import SiteConfig
 
@@ -25,18 +25,18 @@ def _error(request, message, status=200):
     return render(request, "buyback/_error.html", {"message": message}, status=status)
 
 
-def _redirect_to_snapshot(request, snapshot):
-    """Send the browser to the permanent snapshot URL.
+def _redirect_to_quote(request, quote):
+    """Send the browser to the permanent quote URL.
 
     HTMX issues the POST via fetch(), which follows a normal 302 transparently
     and hands HTMX the FINAL response body to swap into the target element —
-    the entire snapshot page would end up nested inside the form page's
+    the entire quote page would end up nested inside the form page's
     #result div, and the address bar would never change. HX-Redirect tells
     HTMX to instead perform a real client-side navigation, so the seller
     lands on the actual shareable URL. Non-HTMX (plain form, no JS) requests
     get a normal redirect so the page still works without JavaScript.
     """
-    url = reverse("buyback:snapshot", kwargs={"code": snapshot.pk})
+    url = reverse("buyback:quote", kwargs={"code": quote.pk})
     if request.headers.get("HX-Request"):
         response = HttpResponse(status=200)
         response["HX-Redirect"] = url
@@ -68,21 +68,21 @@ def submit(request):
         return _error(request, "Paste your items before requesting a quote.")
 
     try:
-        snapshot = generate_snapshot(raw_text, build_default_gateway())
+        quote = generate_quote(raw_text, build_default_gateway())
     except EmptyAppraisalError:
         return _error(request, "None of those lines could be priced.")
-    except DuplicateSnapshotError:
+    except DuplicateQuoteError:
         return _error(request, "That quote already exists. Please try again.")
     except AppraisalError:
         return _error(
             request, "The price service is unavailable right now. Please try again."
         )
 
-    return _redirect_to_snapshot(request, snapshot)
+    return _redirect_to_quote(request, quote)
 
 
-def snapshot(request, code):
+def quote(request, code):
     instance = get_object_or_404(
-        Snapshot.objects.prefetch_related("items"), pk=code
+        Quote.objects.prefetch_related("items"), pk=code
     )
-    return render(request, "buyback/snapshot.html", {"snapshot": instance})
+    return render(request, "buyback/quote.html", {"quote": instance})

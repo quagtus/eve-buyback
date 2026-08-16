@@ -9,7 +9,7 @@ class PriceSourceKind(StrEnum):
     """Which category of rule set an item's price.
 
     Values are UPPERCASE because they are persisted to
-    SnapshotItem.price_source_kind and looked up by the presentation layer.
+    QuoteItem.price_source_kind and looked up by the presentation layer.
     They must match the keys the backfill migration writes and the keys the
     template filter reads — lowercase values would make every newly generated
     quote render a blank Source column while backfilled rows looked correct.

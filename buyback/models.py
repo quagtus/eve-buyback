@@ -1,7 +1,7 @@
 from django.db import models
 
 
-class Snapshot(models.Model):
+class Quote(models.Model):
     """A permanent, frozen quote.
 
     The primary key IS the Janice appraisal code, so the same identifier
@@ -33,15 +33,15 @@ class Snapshot(models.Model):
         return f"{self.code} ({self.total_value} ISK)"
 
 
-class SnapshotItem(models.Model):
-    """One frozen line of a snapshot.
+class QuoteItem(models.Model):
+    """One frozen line of a quote.
 
     type_id is nullable because unparseable paste lines are preserved as
     flagged zero-value rows so the seller can see exactly what was rejected.
     """
 
-    snapshot = models.ForeignKey(
-        Snapshot, on_delete=models.CASCADE, related_name="items"
+    quote = models.ForeignKey(
+        Quote, on_delete=models.CASCADE, related_name="items"
     )
     type_id = models.BigIntegerField(null=True, blank=True)
     type_name = models.CharField(max_length=255)

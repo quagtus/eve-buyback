@@ -22,7 +22,7 @@ These were confirmed against live sources while writing this plan. Do not re-der
 - Response top level: `code` (string, nullable), `created`, `expires`, `failures` (**string**, nullable — newline-separated, NOT an array), `items` (array).
 - Response item: `amount` (quantity), `itemType.eid` (typeID), `itemType.name`, and `effectivePrices` / `immediatePrices` / `top5AveragePrices`, each containing `buyPrice`, `splitPrice`, `sellPrice`, `buyPriceTotal`, `splitPriceTotal`, `sellPriceTotal`.
 - `effectivePrices` reflects the requested `pricingVariant`, so reading `effectivePrices.<basis>Price` honours both config settings.
-- `expires` exists — **Janice appraisals expire.** Our snapshot page must never fetch from Janice at render time.
+- `expires` exists — **Janice appraisals expire.** Our quote page must never fetch from Janice at render time.
 - `pricePercentage` must stay at `1`. It applies one flat percentage to the whole appraisal; our percentages are per-item. Setting it would silently double-discount every quote.
 
 **EVERef reference data** (`https://data.everef.net/reference-data/reference-data-latest.tar.xz`, 14 MB):
@@ -87,11 +87,11 @@ eve-buyback/
 │   │   ├── gateway.py               # PriceAppraisalGateway protocol
 │   │   └── quote.py                 # build_quote()
 │   ├── infrastructure/janice.py     # JaniceAppraisalGateway
-│   ├── models.py                    # Snapshot, SnapshotItem
-│   ├── services.py                  # generate_snapshot() orchestration
+│   ├── models.py                    # Quote, QuoteItem
+│   ├── services.py                  # generate_quote() orchestration
 │   ├── views.py
 │   ├── admin.py
-│   └── templates/buyback/{form,snapshot}.html
+│   └── templates/buyback/{form,quote}.html
 ├── siteconfig/
 │   ├── models.py                    # SiteConfig singleton
 │   └── admin.py
@@ -1877,7 +1877,7 @@ class SiteConfig(models.Model):
     )
     contract_instructions = models.TextField(
         blank=True,
-        help_text="Shown on every quote and frozen into each snapshot.",
+        help_text="Shown on every quote and frozen into each quote.",
     )
 
     class Meta:
@@ -2658,7 +2658,7 @@ git commit -m "Add pure quote assembly combining appraisal and pricing rules"
 
 ---
 
-## Task 14: Snapshot models
+## Task 14: Quote models
 
 **Files:**
 - Create: `buyback/models.py`
@@ -2672,27 +2672,27 @@ from decimal import Decimal
 
 import pytest
 
-from buyback.models import Snapshot, SnapshotItem
+from buyback.models import Quote, QuoteItem
 
 
 @pytest.mark.django_db
-def test_snapshot_is_keyed_by_the_janice_code():
-    snapshot = Snapshot.objects.create(
+def test_quote_is_keyed_by_the_janice_code():
+    quote = Quote.objects.create(
         code="4ovArs",
         total_value=Decimal("140.00"),
         contract_to="Buyback Corp",
         contract_instructions="Contract to Buyback Corp in Jita.",
     )
 
-    assert snapshot.pk == "4ovArs"
-    assert Snapshot.objects.get(pk="4ovArs").total_value == Decimal("140.00")
+    assert quote.pk == "4ovArs"
+    assert Quote.objects.get(pk="4ovArs").total_value == Decimal("140.00")
 
 
 @pytest.mark.django_db
-def test_snapshot_items_preserve_resolved_values():
-    snapshot = Snapshot.objects.create(code="4ovArs", total_value=Decimal("140.00"))
-    SnapshotItem.objects.create(
-        snapshot=snapshot,
+def test_quote_items_preserve_resolved_values():
+    quote = Quote.objects.create(code="4ovArs", total_value=Decimal("140.00"))
+    QuoteItem.objects.create(
+        quote=quote,
         type_id=638,
         type_name="Raven",
         quantity=2,
@@ -2702,7 +2702,7 @@ def test_snapshot_items_preserve_resolved_values():
         line_total=Decimal("140.00"),
     )
 
-    item = snapshot.items.get()
+    item = quote.items.get()
     assert item.percent_applied == Decimal("70.00")
     assert item.price_source == "Battleships"
     assert item.is_flagged is False
@@ -2710,10 +2710,10 @@ def test_snapshot_items_preserve_resolved_values():
 
 @pytest.mark.django_db
 def test_item_count_property():
-    snapshot = Snapshot.objects.create(code="abc", total_value=Decimal("0.00"))
+    quote = Quote.objects.create(code="abc", total_value=Decimal("0.00"))
     for index in range(3):
-        SnapshotItem.objects.create(
-            snapshot=snapshot,
+        QuoteItem.objects.create(
+            quote=quote,
             type_id=index,
             type_name=f"Item {index}",
             quantity=1,
@@ -2723,14 +2723,14 @@ def test_item_count_property():
             line_total=Decimal("1.00"),
         )
 
-    assert snapshot.item_count == 3
+    assert quote.item_count == 3
 
 
 @pytest.mark.django_db
 def test_flagged_item_stores_its_reason():
-    snapshot = Snapshot.objects.create(code="abc", total_value=Decimal("0.00"))
-    SnapshotItem.objects.create(
-        snapshot=snapshot,
+    quote = Quote.objects.create(code="abc", total_value=Decimal("0.00"))
+    QuoteItem.objects.create(
+        quote=quote,
         type_id=None,
         type_name="garbage line",
         quantity=0,
@@ -2742,13 +2742,13 @@ def test_flagged_item_stores_its_reason():
         flag_reason="Could not be parsed",
     )
 
-    assert snapshot.items.get().flag_reason == "Could not be parsed"
+    assert quote.items.get().flag_reason == "Could not be parsed"
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `docker compose exec web pytest tests/buyback/test_models.py -v`
-Expected: FAIL with `ImportError: cannot import name 'Snapshot'`.
+Expected: FAIL with `ImportError: cannot import name 'Quote'`.
 
 - [ ] **Step 3: Write `buyback/models.py`**
 
@@ -2756,7 +2756,7 @@ Expected: FAIL with `ImportError: cannot import name 'Snapshot'`.
 from django.db import models
 
 
-class Snapshot(models.Model):
+class Quote(models.Model):
     """A permanent, frozen quote.
 
     The primary key IS the Janice appraisal code, so the same identifier
@@ -2788,15 +2788,15 @@ class Snapshot(models.Model):
         return f"{self.code} ({self.total_value} ISK)"
 
 
-class SnapshotItem(models.Model):
-    """One frozen line of a snapshot.
+class QuoteItem(models.Model):
+    """One frozen line of a quote.
 
     type_id is nullable because unparseable paste lines are preserved as
     flagged zero-value rows so the seller can see exactly what was rejected.
     """
 
-    snapshot = models.ForeignKey(
-        Snapshot, on_delete=models.CASCADE, related_name="items"
+    quote = models.ForeignKey(
+        Quote, on_delete=models.CASCADE, related_name="items"
     )
     type_id = models.BigIntegerField(null=True, blank=True)
     type_name = models.CharField(max_length=255)
@@ -2828,12 +2828,12 @@ Expected: all 4 tests PASS.
 
 ```bash
 git add buyback tests/buyback/test_models.py
-git commit -m "Add Snapshot and SnapshotItem models keyed by Janice code"
+git commit -m "Add Quote and QuoteItem models keyed by Janice code"
 ```
 
 ---
 
-## Task 15: Snapshot generation service
+## Task 15: Quote generation service
 
 **Files:**
 - Create: `buyback/services.py`
@@ -2849,8 +2849,8 @@ import pytest
 
 from buyback.domain.appraisal import AppraisalItem, AppraisalResult
 from buyback.domain.gateway import AppraisalError
-from buyback.models import Snapshot
-from buyback.services import EmptyAppraisalError, generate_snapshot
+from buyback.models import Quote
+from buyback.services import EmptyAppraisalError, generate_quote
 from catalog.models import EveCategory, EveGroup, EveType
 from pricing.models import BlacklistEntry, CategoryDefaultPercent, CustomRule
 from siteconfig.models import SiteConfig
@@ -2890,7 +2890,7 @@ def configured(db):
 
 
 @pytest.mark.django_db
-def test_generates_a_snapshot_with_frozen_values(configured):
+def test_generates_a_quote_with_frozen_values(configured):
     gateway = StubGateway(
         AppraisalResult(
             code="4ovArs",
@@ -2903,20 +2903,20 @@ def test_generates_a_snapshot_with_frozen_values(configured):
         )
     )
 
-    snapshot = generate_snapshot("Raven\t2", gateway)
+    quote = generate_quote("Raven\t2", gateway)
 
-    assert snapshot.pk == "4ovArs"
-    assert snapshot.total_value == Decimal("140.00")
-    assert snapshot.contract_to == "Buyback Corp"
+    assert quote.pk == "4ovArs"
+    assert quote.total_value == Decimal("140.00")
+    assert quote.contract_to == "Buyback Corp"
     assert gateway.received_text == "Raven\t2"
 
-    item = snapshot.items.get()
+    item = quote.items.get()
     assert item.percent_applied == Decimal("70.00")
     assert item.price_source == "Battleships"
 
 
 @pytest.mark.django_db
-def test_later_rule_changes_do_not_alter_an_existing_snapshot(configured):
+def test_later_rule_changes_do_not_alter_an_existing_quote(configured):
     gateway = StubGateway(
         AppraisalResult(
             code="4ovArs",
@@ -2928,14 +2928,14 @@ def test_later_rule_changes_do_not_alter_an_existing_snapshot(configured):
             failures=(),
         )
     )
-    snapshot = generate_snapshot("Raven\t1", gateway)
-    assert snapshot.total_value == Decimal("70.00")
+    quote = generate_quote("Raven\t1", gateway)
+    assert quote.total_value == Decimal("70.00")
 
     CustomRule.objects.filter(label="Battleships").update(percent=Decimal("10.00"))
     configured.contract_to = "Someone Else"
     configured.save()
 
-    reloaded = Snapshot.objects.get(pk="4ovArs")
+    reloaded = Quote.objects.get(pk="4ovArs")
     assert reloaded.total_value == Decimal("70.00")
     assert reloaded.items.get().percent_applied == Decimal("70.00")
     assert reloaded.contract_to == "Buyback Corp"
@@ -2955,12 +2955,12 @@ def test_blacklisted_and_unparseable_lines_are_persisted_as_flagged(configured):
         )
     )
 
-    snapshot = generate_snapshot("Rifter\t3\ngarbage", gateway)
+    quote = generate_quote("Rifter\t3\ngarbage", gateway)
 
-    flagged = list(snapshot.items.all())
+    flagged = list(quote.items.all())
     assert len(flagged) == 2
     assert all(item.is_flagged for item in flagged)
-    assert snapshot.total_value == Decimal("0.00")
+    assert quote.total_value == Decimal("0.00")
 
 
 @pytest.mark.django_db
@@ -2970,9 +2970,9 @@ def test_appraisal_with_no_items_raises_and_persists_nothing(configured):
     )
 
     with pytest.raises(EmptyAppraisalError):
-        generate_snapshot("garbage", gateway)
+        generate_quote("garbage", gateway)
 
-    assert Snapshot.objects.count() == 0
+    assert Quote.objects.count() == 0
 
 
 @pytest.mark.django_db
@@ -2980,9 +2980,9 @@ def test_gateway_failure_persists_nothing(configured):
     gateway = StubGateway(error=AppraisalError("boom"))
 
     with pytest.raises(AppraisalError):
-        generate_snapshot("Raven\t1", gateway)
+        generate_quote("Raven\t1", gateway)
 
-    assert Snapshot.objects.count() == 0
+    assert Quote.objects.count() == 0
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -3002,7 +3002,7 @@ from django.utils import timezone
 from buyback.domain.gateway import PriceAppraisalGateway
 from buyback.domain.quote import build_quote
 from buyback.infrastructure.janice import JaniceAppraisalGateway
-from buyback.models import Snapshot, SnapshotItem
+from buyback.models import Quote, QuoteItem
 from catalog.models import EveType
 from pricing.domain.ruleset import ItemClassification
 from pricing.repositories import load_ruleset
@@ -3010,7 +3010,7 @@ from siteconfig.models import SiteConfig
 
 
 class EmptyAppraisalError(RuntimeError):
-    """Nothing in the paste could be priced, so there is nothing to snapshot."""
+    """Nothing in the paste could be priced, so there is nothing to quote."""
 
 
 def build_default_gateway() -> JaniceAppraisalGateway:
@@ -3039,9 +3039,9 @@ def _classifications(type_ids) -> dict[int, ItemClassification]:
 
 
 @transaction.atomic
-def generate_snapshot(
+def generate_quote(
     raw_text: str, gateway: PriceAppraisalGateway | None = None
-) -> Snapshot:
+) -> Quote:
     gateway = gateway or build_default_gateway()
 
     appraisal = gateway.create_appraisal(raw_text)
@@ -3053,16 +3053,16 @@ def generate_snapshot(
     quote = build_quote(appraisal, ruleset, classifications, timezone.now())
 
     config = SiteConfig.load()
-    snapshot = Snapshot.objects.create(
+    quote = Quote.objects.create(
         code=quote.code,
         total_value=quote.total_value,
         contract_to=config.contract_to,
         contract_instructions=config.contract_instructions,
     )
-    SnapshotItem.objects.bulk_create(
+    QuoteItem.objects.bulk_create(
         [
-            SnapshotItem(
-                snapshot=snapshot,
+            QuoteItem(
+                quote=quote,
                 type_id=line.type_id,
                 type_name=line.type_name,
                 quantity=line.quantity,
@@ -3076,7 +3076,7 @@ def generate_snapshot(
             for line in quote.lines
         ]
     )
-    return snapshot
+    return quote
 ```
 
 - [ ] **Step 4: Run tests to verify they pass**
@@ -3088,7 +3088,7 @@ Expected: all 5 tests PASS.
 
 ```bash
 git add buyback/services.py tests/buyback/test_services.py
-git commit -m "Add snapshot generation service with frozen resolved values"
+git commit -m "Add quote generation service with frozen resolved values"
 ```
 
 ---
@@ -3096,7 +3096,7 @@ git commit -m "Add snapshot generation service with frozen resolved values"
 ## Task 16: Public views and templates
 
 **Files:**
-- Create: `buyback/views.py`, `buyback/urls.py`, `templates/base.html`, `buyback/templates/buyback/form.html`, `buyback/templates/buyback/snapshot.html`, `buyback/templates/buyback/_error.html`
+- Create: `buyback/views.py`, `buyback/urls.py`, `templates/base.html`, `buyback/templates/buyback/form.html`, `buyback/templates/buyback/quote.html`, `buyback/templates/buyback/_error.html`
 - Modify: `config/urls.py`
 - Test: `tests/buyback/test_views.py`
 
@@ -3110,19 +3110,19 @@ import pytest
 from django.urls import reverse
 
 from buyback.domain.appraisal import AppraisalItem, AppraisalResult
-from buyback.models import Snapshot, SnapshotItem
+from buyback.models import Quote, QuoteItem
 
 
 @pytest.fixture
-def priced_snapshot(db):
-    snapshot = Snapshot.objects.create(
+def priced_quote(db):
+    quote = Quote.objects.create(
         code="4ovArs",
         total_value=Decimal("140.00"),
         contract_to="Buyback Corp",
         contract_instructions="Contract to Buyback Corp in Jita.",
     )
-    SnapshotItem.objects.create(
-        snapshot=snapshot,
+    QuoteItem.objects.create(
+        quote=quote,
         type_id=638,
         type_name="Raven",
         quantity=2,
@@ -3131,8 +3131,8 @@ def priced_snapshot(db):
         price_source="Battleships",
         line_total=Decimal("140.00"),
     )
-    SnapshotItem.objects.create(
-        snapshot=snapshot,
+    QuoteItem.objects.create(
+        quote=quote,
         type_id=587,
         type_name="Rifter",
         quantity=1,
@@ -3143,7 +3143,7 @@ def priced_snapshot(db):
         is_flagged=True,
         flag_reason="Blacklisted",
     )
-    return snapshot
+    return quote
 
 
 @pytest.mark.django_db
@@ -3155,8 +3155,8 @@ def test_form_page_renders(client):
 
 
 @pytest.mark.django_db
-def test_snapshot_page_shows_items_totals_and_flags(client, priced_snapshot):
-    response = client.get(reverse("buyback:snapshot", args=["4ovArs"]))
+def test_quote_page_shows_items_totals_and_flags(client, priced_quote):
+    response = client.get(reverse("buyback:quote", args=["4ovArs"]))
 
     assert response.status_code == 200
     body = response.content.decode()
@@ -3168,12 +3168,12 @@ def test_snapshot_page_shows_items_totals_and_flags(client, priced_snapshot):
 
 
 @pytest.mark.django_db
-def test_unknown_snapshot_returns_404(client):
-    assert client.get(reverse("buyback:snapshot", args=["nope"])).status_code == 404
+def test_unknown_quote_returns_404(client):
+    assert client.get(reverse("buyback:quote", args=["nope"])).status_code == 404
 
 
 @pytest.mark.django_db
-def test_submitting_redirects_to_the_new_snapshot(client, monkeypatch, settings):
+def test_submitting_redirects_to_the_new_quote(client, monkeypatch, settings):
     settings.BUYBACK_RATE_LIMIT = "1000/h"
 
     class StubGateway:
@@ -3193,7 +3193,7 @@ def test_submitting_redirects_to_the_new_snapshot(client, monkeypatch, settings)
     response = client.post(reverse("buyback:submit"), {"raw_text": "Raven\t1"})
 
     assert response.status_code == 302
-    assert response.url == reverse("buyback:snapshot", args=["newcode"])
+    assert response.url == reverse("buyback:quote", args=["newcode"])
 
 
 @pytest.mark.django_db
@@ -3204,7 +3204,7 @@ def test_empty_paste_is_rejected_without_calling_the_gateway(client, settings):
 
     assert response.status_code == 200
     assert b"Paste" in response.content
-    assert Snapshot.objects.count() == 0
+    assert Quote.objects.count() == 0
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -3220,11 +3220,11 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django_ratelimit.decorators import ratelimit
 
 from buyback.domain.gateway import AppraisalError
-from buyback.models import Snapshot
+from buyback.models import Quote
 from buyback.services import (
     EmptyAppraisalError,
     build_default_gateway,
-    generate_snapshot,
+    generate_quote,
 )
 from siteconfig.models import SiteConfig
 
@@ -3254,7 +3254,7 @@ def submit(request):
         return _error(request, "Paste your items before requesting a quote.")
 
     try:
-        snapshot = generate_snapshot(raw_text, build_default_gateway())
+        quote = generate_quote(raw_text, build_default_gateway())
     except EmptyAppraisalError:
         return _error(request, "None of those lines could be priced.")
     except AppraisalError:
@@ -3262,14 +3262,14 @@ def submit(request):
             request, "The price service is unavailable right now. Please try again."
         )
 
-    return redirect("buyback:snapshot", code=snapshot.pk)
+    return redirect("buyback:quote", code=quote.pk)
 
 
-def snapshot(request, code):
+def quote(request, code):
     instance = get_object_or_404(
-        Snapshot.objects.prefetch_related("items"), pk=code
+        Quote.objects.prefetch_related("items"), pk=code
     )
-    return render(request, "buyback/snapshot.html", {"snapshot": instance})
+    return render(request, "buyback/quote.html", {"quote": instance})
 ```
 
 Note: `submit` returns a redirect, so HTMX is configured to follow it via `hx-boost` on the form (see the template). The `_error.html` partial is swapped in place on failure.
@@ -3287,7 +3287,7 @@ app_name = "buyback"
 urlpatterns = [
     path("", views.form, name="form"),
     path("submit/", views.submit, name="submit"),
-    path("q/<str:code>/", views.snapshot, name="snapshot"),
+    path("q/<str:code>/", views.quote, name="quote"),
 ]
 ```
 
@@ -3366,14 +3366,14 @@ urlpatterns = [
 ```
 
 ```html
-<!-- buyback/templates/buyback/snapshot.html -->
+<!-- buyback/templates/buyback/quote.html -->
 {% extends "base.html" %}
-{% block title %}Quote {{ snapshot.code }}{% endblock %}
+{% block title %}Quote {{ quote.code }}{% endblock %}
 {% block content %}
-  <h2>Quote {{ snapshot.code }}</h2>
+  <h2>Quote {{ quote.code }}</h2>
   <p class="muted">
-    Generated {{ snapshot.created_at }}. This page is permanent and will not change.
-    Cross-check on <a href="{{ snapshot.janice_url }}">{{ snapshot.janice_url }}</a>.
+    Generated {{ quote.created_at }}. This page is permanent and will not change.
+    Cross-check on <a href="{{ quote.janice_url }}">{{ quote.janice_url }}</a>.
   </p>
 
   <table>
@@ -3388,7 +3388,7 @@ urlpatterns = [
       </tr>
     </thead>
     <tbody>
-      {% for item in snapshot.items.all %}
+      {% for item in quote.items.all %}
         <tr class="{% if item.is_flagged %}flagged{% endif %}">
           <td>
             {{ item.type_name }}
@@ -3404,13 +3404,13 @@ urlpatterns = [
     </tbody>
   </table>
 
-  <p class="total">Total offer: {{ snapshot.total_value }} ISK</p>
+  <p class="total">Total offer: {{ quote.total_value }} ISK</p>
 
-  {% if snapshot.contract_to %}
+  {% if quote.contract_to %}
     <h3>How to sell</h3>
-    <p>Create an in-game contract to <strong>{{ snapshot.contract_to }}</strong>.</p>
-    {% if snapshot.contract_instructions %}
-      <p>{{ snapshot.contract_instructions|linebreaksbr }}</p>
+    <p>Create an in-game contract to <strong>{{ quote.contract_to }}</strong>.</p>
+    {% if quote.contract_instructions %}
+      <p>{{ quote.contract_instructions|linebreaksbr }}</p>
     {% endif %}
   {% endif %}
 {% endblock %}
@@ -3425,7 +3425,7 @@ Expected: all 5 tests PASS.
 
 ```bash
 git add buyback templates config/urls.py tests/buyback/test_views.py
-git commit -m "Add public paste form and permanent snapshot page"
+git commit -m "Add public paste form and permanent quote page"
 ```
 
 ---
@@ -3772,11 +3772,11 @@ from django.contrib import admin
 from django.utils.html import format_html
 from unfold.admin import ModelAdmin, TabularInline
 
-from buyback.models import Snapshot, SnapshotItem
+from buyback.models import Quote, QuoteItem
 
 
-class SnapshotItemInline(TabularInline):
-    model = SnapshotItem
+class QuoteItemInline(TabularInline):
+    model = QuoteItem
     extra = 0
     can_delete = False
     fields = [
@@ -3789,14 +3789,14 @@ class SnapshotItemInline(TabularInline):
         return False
 
 
-@admin.register(Snapshot)
-class SnapshotAdmin(ModelAdmin):
+@admin.register(Quote)
+class QuoteAdmin(ModelAdmin):
     """Quotes are immutable records — read-only bookkeeping only."""
 
     list_display = ["code", "created_at", "total_value", "item_count", "public_link"]
     search_fields = ["code"]
     date_hierarchy = "created_at"
-    inlines = [SnapshotItemInline]
+    inlines = [QuoteItemInline]
     readonly_fields = [
         "code", "created_at", "total_value", "contract_to", "contract_instructions",
     ]
@@ -3856,7 +3856,7 @@ UNFOLD = {
             {
                 "title": "Buyback",
                 "items": [
-                    {"title": "Quotes", "link": "/admin/buyback/snapshot/"},
+                    {"title": "Quotes", "link": "/admin/buyback/quote/"},
                     {"title": "Settings", "link": "/admin/siteconfig/siteconfig/"},
                 ],
             },
@@ -4265,14 +4265,14 @@ Expected on the resulting page:
 - Total equals the sum of the visible line totals.
 - The Janice cross-link resolves to the same code.
 
-- [ ] **Step 5: Prove the snapshot is frozen**
+- [ ] **Step 5: Prove the quote is frozen**
 
 Change "Raven Special" to 10% in the admin, then reload the same `/q/<code>/` URL.
 Expected: the page is completely unchanged — same percent, same source label, same total.
 
 - [ ] **Step 6: Confirm the quote appears in admin history**
 
-Admin → Quotes. Expected: the snapshot listed with its code, total, item count, and a working public link. The record must be read-only.
+Admin → Quotes. Expected: the quote listed with its code, total, item count, and a working public link. The record must be read-only.
 
 - [ ] **Step 7: Commit any fixes**
 
@@ -4298,10 +4298,10 @@ git commit -m "Fix issues found during end-to-end verification"
 | §5 pricing models + overlap validation | Tasks 6, 7, 18 |
 | §5 Resolution tiers + specificity | Task 5 |
 | §5 Worked-examples table | Task 5 tests |
-| §5 Snapshot/SnapshotItem, code as PK | Task 14 |
+| §5 Quote/QuoteItem, code as PK | Task 14 |
 | §5 Money handling (Decimal, half-up) | Task 10 |
 | §6 One-step data flow | Tasks 15, 16 |
-| §6 Empty appraisal → no snapshot | Task 15 |
+| §6 Empty appraisal → no quote | Task 15 |
 | §7 Admin capabilities | Task 18 |
 | §7 Rule summary view | Task 19 |
 | §7 API key not in admin | Tasks 1, 9 |
@@ -4311,7 +4311,7 @@ git commit -m "Fix issues found during end-to-end verification"
 
 No spec requirement is unimplemented.
 
-**Type consistency check:** `PriceDecision(percent, source_kind, source_label, flagged, flag_reason)` is constructed in Task 5 and consumed in Task 13. `Rule(label, percent, category_ids, group_ids, type_ids, valid_from, valid_to)` is defined in Task 4 and constructed in Tasks 6, 8, 18. `RuleSet(blacklist_category_ids, blacklist_group_ids, blacklist_type_ids, sales, custom_rules, category_defaults)` is defined in Task 4 and built in Task 8. `AppraisalResult(code, items, failures)` is defined in Task 11, produced in Task 12, consumed in Tasks 13, 15. `resolve_price(item, ruleset, now)` and `line_total(unit_price, quantity, percent)` keep the same signatures at every call site. `Snapshot.code` is the PK everywhere; there is no second `janice_appraisal_code` field.
+**Type consistency check:** `PriceDecision(percent, source_kind, source_label, flagged, flag_reason)` is constructed in Task 5 and consumed in Task 13. `Rule(label, percent, category_ids, group_ids, type_ids, valid_from, valid_to)` is defined in Task 4 and constructed in Tasks 6, 8, 18. `RuleSet(blacklist_category_ids, blacklist_group_ids, blacklist_type_ids, sales, custom_rules, category_defaults)` is defined in Task 4 and built in Task 8. `AppraisalResult(code, items, failures)` is defined in Task 11, produced in Task 12, consumed in Tasks 13, 15. `resolve_price(item, ruleset, now)` and `line_total(unit_price, quantity, percent)` keep the same signatures at every call site. `Quote.code` is the PK everywhere; there is no second `janice_appraisal_code` field.
 
 ---
 
@@ -4330,10 +4330,10 @@ a re-run.
    builds its own test DB, so the drift is silent. Always follow with
    `docker compose exec web python manage.py migrate`.
 
-3. **Task 14's `SnapshotItem.type_name` is `max_length=255`, but Janice's `failures` is
+3. **Task 14's `QuoteItem.type_name` is `max_length=255`, but Janice's `failures` is
    arbitrary user-echoed text.** A paste line longer than 255 characters raised
    `DataError` inside `bulk_create`, and because that ran under `transaction.atomic` it
-   rolled back the *entire* snapshot — one long junk line turned a whole quote into a 500.
+   rolled back the *entire* quote — one long junk line turned a whole quote into a 500.
    Fixed by truncating to `MAX_TYPE_NAME_LENGTH` in `buyback/domain/quote.py`.
 
 4. **Task 15 held the DB transaction open across the Janice HTTP call.** `@transaction.atomic`
@@ -4347,7 +4347,7 @@ a re-run.
 
 6. **Task 16's HTMX flow was broken while its tests passed.** The form uses `hx-post` with
    `hx-target="#result"` but the view returned a 302. HTMX follows redirects transparently,
-   so the entire snapshot page got swapped into a `<div>` and the address bar never changed —
+   so the entire quote page got swapped into a `<div>` and the address bar never changed —
    defeating the permanent-link feature. Django's test client sees only the 302, so the
    plan's tests passed regardless. Fixed: return `HX-Redirect` for HTMX requests, plain 302
    otherwise.

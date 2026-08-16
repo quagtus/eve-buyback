@@ -19,7 +19,7 @@ class Migration(migrations.Migration):
                 ('pricing_basis', models.CharField(choices=[('buy', 'Buy price'), ('split', 'Split price'), ('sell', 'Sell price')], default='split', max_length=16)),
                 ('pricing_variant', models.CharField(choices=[('immediate', 'Immediate'), ('top5percent', 'Top 5 percent')], default='immediate', max_length=16)),
                 ('contract_to', models.CharField(blank=True, help_text='Character or corporation that sellers should contract to.', max_length=255)),
-                ('contract_instructions', models.TextField(blank=True, help_text='Shown on every quote and frozen into each snapshot.')),
+                ('contract_instructions', models.TextField(blank=True, help_text='Shown on every quote and frozen into each quote.')),
             ],
             options={
                 'verbose_name': 'site configuration',

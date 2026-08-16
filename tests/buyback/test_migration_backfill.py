@@ -4,7 +4,7 @@ import importlib
 # A module name starting with a digit cannot be imported with a plain
 # `import` statement, so load it by name instead.
 backfill = importlib.import_module(
-    "buyback.migrations.0003_backfill_snapshotitem_keys"
+    "buyback.migrations.0003_backfill_quoteitem_keys"
 )
 
 

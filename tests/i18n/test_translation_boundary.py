@@ -5,7 +5,7 @@ from django.test import Client
 from django.test.utils import override_settings
 from django.utils import translation
 
-from buyback.models import Snapshot, SnapshotItem
+from buyback.models import Quote, QuoteItem
 from buyback.templatetags.buyback_labels import flag_reason_label, price_source_label
 
 
@@ -40,11 +40,11 @@ def test_rule_name_is_identical_in_every_locale():
 
 @pytest.mark.django_db
 def test_eve_item_names_are_never_translated_on_the_quote_page():
-    snapshot = Snapshot.objects.create(
+    quote = Quote.objects.create(
         code="I18NTEST", total_value=Decimal("100.00"), contract_to="Corp"
     )
-    SnapshotItem.objects.create(
-        snapshot=snapshot,
+    QuoteItem.objects.create(
+        quote=quote,
         type_id=638,
         type_name="Raven",
         quantity=1,
@@ -54,8 +54,8 @@ def test_eve_item_names_are_never_translated_on_the_quote_page():
         price_source_label="Raven Special",
         line_total=Decimal("100.00"),
     )
-    SnapshotItem.objects.create(
-        snapshot=snapshot,
+    QuoteItem.objects.create(
+        quote=quote,
         type_id=587,
         type_name="Rifter",
         quantity=1,

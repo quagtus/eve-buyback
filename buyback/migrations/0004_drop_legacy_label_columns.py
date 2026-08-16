@@ -14,7 +14,7 @@
 # reverse RunPython, and never re-tightens to NOT NULL afterward — a
 # permanently relaxed constraint on a legacy, about-to-be-dropped column is a
 # fully acceptable cost for a reverse migration that must not crash on
-# frozen snapshot data.
+# frozen quote data.
 
 from django.db import migrations, models
 
@@ -22,14 +22,14 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('buyback', '0003_backfill_snapshotitem_keys'),
+        ('buyback', '0003_backfill_quoteitem_keys'),
     ]
 
     operations = [
         migrations.SeparateDatabaseAndState(
             state_operations=[
                 migrations.AlterField(
-                    model_name='snapshotitem',
+                    model_name='quoteitem',
                     name='price_source',
                     field=models.CharField(max_length=120, null=True, blank=True),
                 ),
@@ -37,11 +37,11 @@ class Migration(migrations.Migration):
             database_operations=[],
         ),
         migrations.RemoveField(
-            model_name='snapshotitem',
+            model_name='quoteitem',
             name='flag_reason',
         ),
         migrations.RemoveField(
-            model_name='snapshotitem',
+            model_name='quoteitem',
             name='price_source',
         ),
     ]

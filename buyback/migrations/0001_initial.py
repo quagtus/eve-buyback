@@ -13,7 +13,7 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='Snapshot',
+            name='Quote',
             fields=[
                 ('code', models.CharField(max_length=64, primary_key=True, serialize=False)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
@@ -26,7 +26,7 @@ class Migration(migrations.Migration):
             },
         ),
         migrations.CreateModel(
-            name='SnapshotItem',
+            name='QuoteItem',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('type_id', models.BigIntegerField(blank=True, null=True)),
@@ -38,7 +38,7 @@ class Migration(migrations.Migration):
                 ('line_total', models.DecimalField(decimal_places=2, max_digits=20)),
                 ('is_flagged', models.BooleanField(default=False)),
                 ('flag_reason', models.CharField(blank=True, max_length=120, null=True)),
-                ('snapshot', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='items', to='buyback.snapshot')),
+                ('quote', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='items', to='buyback.quote')),
             ],
             options={
                 'ordering': ['id'],

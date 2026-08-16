@@ -61,7 +61,7 @@ Verified accessible token set (every value ≥ 4.5 against both its base and rai
 | `--danger` | `#E0A0A6` | `#A54049` |
 | `--danger-surface` | `#3A2C2E` | `#F7E4E6` |
 
-**Existing data to migrate** (real values currently in `SnapshotItem`):
+**Existing data to migrate** (real values currently in `QuoteItem`):
 - `flag_reason`: `None`, `'Blacklisted'`, `'No rule configured'`, `'Could not be parsed'`
 - `price_source`: `'Raven Special'` (a rule name), `'Blacklisted'`, `'No rule configured'`, `'none'`
 
@@ -574,23 +574,23 @@ git commit -m "Emit stable enum keys from the domain instead of English labels"
 
 ---
 
-## Task 3: SnapshotItem field split and migrations
+## Task 3: QuoteItem field split and migrations
 
 **Files:**
 - Modify: `buyback/models.py`, `buyback/services.py`
-- Create: `buyback/migrations/0002_split_snapshotitem_labels.py` (generated), `buyback/migrations/0003_backfill_snapshotitem_keys.py` (hand-written)
+- Create: `buyback/migrations/0002_split_quoteitem_labels.py` (generated), `buyback/migrations/0003_backfill_quoteitem_keys.py` (hand-written)
 - Test: `tests/buyback/test_models.py`, `tests/buyback/test_migration_backfill.py`
 
 - [ ] **Step 1: Write the failing model test**
 
-Replace the existing `test_snapshot_items_preserve_resolved_values` in `tests/buyback/test_models.py`:
+Replace the existing `test_quote_items_preserve_resolved_values` in `tests/buyback/test_models.py`:
 
 ```python
 @pytest.mark.django_db
-def test_snapshot_items_store_kind_and_label_separately():
-    snapshot = Snapshot.objects.create(code="4ovArs", total_value=Decimal("140.00"))
-    SnapshotItem.objects.create(
-        snapshot=snapshot,
+def test_quote_items_store_kind_and_label_separately():
+    quote = Quote.objects.create(code="4ovArs", total_value=Decimal("140.00"))
+    QuoteItem.objects.create(
+        quote=quote,
         type_id=638,
         type_name="Raven",
         quantity=2,
@@ -601,7 +601,7 @@ def test_snapshot_items_store_kind_and_label_separately():
         line_total=Decimal("140.00"),
     )
 
-    item = snapshot.items.get()
+    item = quote.items.get()
     assert item.price_source_kind == "CUSTOM"
     assert item.price_source_label == "Battleships"
     assert item.flag_reason_code is None
@@ -610,9 +610,9 @@ def test_snapshot_items_store_kind_and_label_separately():
 
 @pytest.mark.django_db
 def test_system_source_has_no_rule_label():
-    snapshot = Snapshot.objects.create(code="abc", total_value=Decimal("0.00"))
-    SnapshotItem.objects.create(
-        snapshot=snapshot,
+    quote = Quote.objects.create(code="abc", total_value=Decimal("0.00"))
+    QuoteItem.objects.create(
+        quote=quote,
         type_id=587,
         type_name="Rifter",
         quantity=1,
@@ -625,7 +625,7 @@ def test_system_source_has_no_rule_label():
         flag_reason_code="BLACKLISTED",
     )
 
-    item = snapshot.items.get()
+    item = quote.items.get()
     assert item.price_source_label == ""
     assert item.flag_reason_code == "BLACKLISTED"
 ```
@@ -633,11 +633,11 @@ def test_system_source_has_no_rule_label():
 - [ ] **Step 2: Run to verify it fails**
 
 Run: `docker compose exec web pytest tests/buyback/test_models.py -v`
-Expected: FAIL with `TypeError: SnapshotItem() got unexpected keyword arguments: 'price_source_kind'`.
+Expected: FAIL with `TypeError: QuoteItem() got unexpected keyword arguments: 'price_source_kind'`.
 
 - [ ] **Step 3: Change the model fields in `buyback/models.py`**
 
-Replace the `price_source` and `flag_reason` field definitions on `SnapshotItem`:
+Replace the `price_source` and `flag_reason` field definitions on `QuoteItem`:
 
 ```python
     price_source_kind = models.CharField(
@@ -660,13 +660,13 @@ Replace the `price_source` and `flag_reason` field definitions on `SnapshotItem`
 
 Run:
 ```bash
-docker compose exec web python manage.py makemigrations buyback --name split_snapshotitem_labels
+docker compose exec web python manage.py makemigrations buyback --name split_quoteitem_labels
 ```
-Expected: creates `buyback/migrations/0002_split_snapshotitem_labels.py`.
+Expected: creates `buyback/migrations/0002_split_quoteitem_labels.py`.
 
 Django will prompt about removing `price_source`/`flag_reason` and adding new non-null fields. Provide `""` as the one-off default for `price_source_kind` if asked. **Do not delete the old columns in this migration** — the backfill in Step 5 needs to read them. If the generated migration removes them, split it: keep only the `AddField` operations in `0002`, and move the two `RemoveField` operations into a new `0004_drop_legacy_label_columns.py` created after the backfill.
 
-- [ ] **Step 5: Write the data migration `buyback/migrations/0003_backfill_snapshotitem_keys.py`**
+- [ ] **Step 5: Write the data migration `buyback/migrations/0003_backfill_quoteitem_keys.py`**
 
 ```python
 """Backfill machine keys from the legacy English display strings.
@@ -677,7 +677,7 @@ matching a known system label is therefore treated as a rule name — which
 is the correct reading, since system labels were a closed set.
 
 Unrecognised values degrade to NONE/null rather than failing the migration:
-losing a label is recoverable, refusing to migrate a frozen snapshot is not.
+losing a label is recoverable, refusing to migrate a frozen quote is not.
 """
 
 from django.db import migrations
@@ -698,8 +698,8 @@ FLAG_CODE_BY_LEGACY = {
 
 
 def forwards(apps, schema_editor):
-    SnapshotItem = apps.get_model("buyback", "SnapshotItem")
-    for item in SnapshotItem.objects.all().iterator():
+    QuoteItem = apps.get_model("buyback", "QuoteItem")
+    for item in QuoteItem.objects.all().iterator():
         legacy_source = item.price_source or ""
         kind = SOURCE_KIND_BY_LEGACY.get(legacy_source)
         if kind is None:
@@ -719,10 +719,10 @@ def forwards(apps, schema_editor):
 
 
 def backwards(apps, schema_editor):
-    SnapshotItem = apps.get_model("buyback", "SnapshotItem")
+    QuoteItem = apps.get_model("buyback", "QuoteItem")
     legacy_by_kind = {v: k for k, v in SOURCE_KIND_BY_LEGACY.items()}
     legacy_by_code = {v: k for k, v in FLAG_CODE_BY_LEGACY.items()}
-    for item in SnapshotItem.objects.all().iterator():
+    for item in QuoteItem.objects.all().iterator():
         if item.price_source_kind in ("CUSTOM", "SALE") and item.price_source_label:
             item.price_source = item.price_source_label
         else:
@@ -732,7 +732,7 @@ def backwards(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-    dependencies = [("buyback", "0002_split_snapshotitem_labels")]
+    dependencies = [("buyback", "0002_split_quoteitem_labels")]
     operations = [migrations.RunPython(forwards, backwards)]
 ```
 
@@ -747,7 +747,7 @@ import importlib
 # A module name starting with a digit cannot be imported with a plain
 # `import` statement, so load it by name instead.
 backfill = importlib.import_module(
-    "buyback.migrations.0003_backfill_snapshotitem_keys"
+    "buyback.migrations.0003_backfill_quoteitem_keys"
 )
 
 
@@ -773,11 +773,11 @@ Note: a module name starting with a digit cannot be imported with a plain `impor
 
 - [ ] **Step 7: Update `buyback/services.py` to write the new fields**
 
-In `generate_snapshot`, change the `SnapshotItem(...)` construction inside `bulk_create`:
+In `generate_quote`, change the `QuoteItem(...)` construction inside `bulk_create`:
 
 ```python
-            SnapshotItem(
-                snapshot=snapshot,
+            QuoteItem(
+                quote=quote,
                 type_id=line.type_id,
                 type_name=line.type_name,
                 quantity=line.quantity,
@@ -797,8 +797,8 @@ Run:
 ```bash
 docker compose exec web python manage.py migrate buyback
 docker compose exec web python manage.py shell -c "
-from buyback.models import SnapshotItem
-for i in SnapshotItem.objects.all():
+from buyback.models import QuoteItem
+for i in QuoteItem.objects.all():
     print(i.type_name, '|', i.price_source_kind, '|', repr(i.price_source_label), '|', i.flag_reason_code)
 "
 ```
@@ -813,7 +813,7 @@ Expected: PASS. `tests/buyback/test_services.py` and `tests/buyback/test_views.p
 
 ```bash
 git add buyback tests/buyback
-git commit -m "Split SnapshotItem labels into machine keys and rule names"
+git commit -m "Split QuoteItem labels into machine keys and rule names"
 ```
 
 ---
@@ -1123,7 +1123,7 @@ from django.test import Client
 from django.test.utils import override_settings
 from django.utils import translation
 
-from buyback.models import Snapshot, SnapshotItem
+from buyback.models import Quote, QuoteItem
 from buyback.templatetags.buyback_labels import flag_reason_label, price_source_label
 
 
@@ -1158,11 +1158,11 @@ def test_rule_name_is_identical_in_every_locale():
 
 @pytest.mark.django_db
 def test_eve_item_names_are_never_translated_on_the_quote_page():
-    snapshot = Snapshot.objects.create(
+    quote = Quote.objects.create(
         code="I18NTEST", total_value=Decimal("100.00"), contract_to="Corp"
     )
-    SnapshotItem.objects.create(
-        snapshot=snapshot,
+    QuoteItem.objects.create(
+        quote=quote,
         type_id=638,
         type_name="Raven",
         quantity=1,
@@ -1172,8 +1172,8 @@ def test_eve_item_names_are_never_translated_on_the_quote_page():
         price_source_label="Raven Special",
         line_total=Decimal("100.00"),
     )
-    SnapshotItem.objects.create(
-        snapshot=snapshot,
+    QuoteItem.objects.create(
+        quote=quote,
         type_id=587,
         type_name="Rifter",
         quantity=1,
@@ -1253,7 +1253,7 @@ git commit -m "Prove the translation boundary with a test-only pseudo-locale"
 ## Task 7: Restyle the public templates
 
 **Files:**
-- Modify: `templates/base.html`, `buyback/templates/buyback/form.html`, `buyback/templates/buyback/snapshot.html`, `buyback/templates/buyback/_error.html`
+- Modify: `templates/base.html`, `buyback/templates/buyback/form.html`, `buyback/templates/buyback/quote.html`, `buyback/templates/buyback/_error.html`
 - Test: `tests/buyback/test_views.py`
 
 - [ ] **Step 1: Rewrite `templates/base.html`**
@@ -1372,22 +1372,22 @@ The inline script must run before first paint or the page flashes the wrong them
 {% endblock %}
 ```
 
-- [ ] **Step 3: Rewrite `buyback/templates/buyback/snapshot.html`**
+- [ ] **Step 3: Rewrite `buyback/templates/buyback/quote.html`**
 
 ```html
 {% extends "base.html" %}
 {% load i18n buyback_labels %}
 
-{% block title %}{% blocktranslate with code=snapshot.code %}Quote {{ code }}{% endblocktranslate %}{% endblock %}
+{% block title %}{% blocktranslate with code=quote.code %}Quote {{ code }}{% endblocktranslate %}{% endblock %}
 
 {% block content %}
   <h2 class="text-2xl font-semibold tracking-tight">
-    {% blocktranslate with code=snapshot.code %}Quote {{ code }}{% endblocktranslate %}
+    {% blocktranslate with code=quote.code %}Quote {{ code }}{% endblocktranslate %}
   </h2>
 
   <p class="mt-2 text-sm text-text-muted">
-    {% blocktranslate with created=snapshot.created_at %}Generated {{ created }}. This page is permanent and will not change.{% endblocktranslate %}
-    <a href="{{ snapshot.janice_url }}" class="text-accent underline">{{ snapshot.janice_url }}</a>
+    {% blocktranslate with created=quote.created_at %}Generated {{ created }}. This page is permanent and will not change.{% endblocktranslate %}
+    <a href="{{ quote.janice_url }}" class="text-accent underline">{{ quote.janice_url }}</a>
   </p>
 
   <div class="mt-6 overflow-x-auto rounded-lg border border-border-token">
@@ -1403,7 +1403,7 @@ The inline script must run before first paint or the page flashes the wrong them
         </tr>
       </thead>
       <tbody>
-        {% for item in snapshot.items.all %}
+        {% for item in quote.items.all %}
           <tr class="border-t border-border-token {% if item.is_flagged %}bg-danger-surface{% endif %}">
             <td class="px-3 py-2 {% if item.is_flagged %}text-danger{% endif %}">
               {{ item.type_name }}
@@ -1423,17 +1423,17 @@ The inline script must run before first paint or the page flashes the wrong them
   </div>
 
   <p class="mt-6 text-2xl font-bold tabular-nums">
-    {% blocktranslate with total=snapshot.total_value %}Total offer: {{ total }} ISK{% endblocktranslate %}
+    {% blocktranslate with total=quote.total_value %}Total offer: {{ total }} ISK{% endblocktranslate %}
   </p>
 
-  {% if snapshot.contract_to %}
+  {% if quote.contract_to %}
     <div class="mt-8 rounded-lg border border-border-token bg-surface-raised p-4">
       <h3 class="font-semibold">{% translate "How to sell" %}</h3>
       <p class="mt-2 text-sm">
-        {% blocktranslate with corp=snapshot.contract_to %}Create an in-game contract to <strong>{{ corp }}</strong>.{% endblocktranslate %}
+        {% blocktranslate with corp=quote.contract_to %}Create an in-game contract to <strong>{{ corp }}</strong>.{% endblocktranslate %}
       </p>
-      {% if snapshot.contract_instructions %}
-        <p class="mt-2 text-sm text-text-muted">{{ snapshot.contract_instructions|linebreaksbr }}</p>
+      {% if quote.contract_instructions %}
+        <p class="mt-2 text-sm text-text-muted">{{ quote.contract_instructions|linebreaksbr }}</p>
       {% endif %}
     </div>
   {% endif %}
@@ -1656,14 +1656,14 @@ docker compose exec -T web python manage.py shell -c "
 from decimal import Decimal
 from django.test import Client
 from django.test.utils import override_settings
-from buyback.models import Snapshot, SnapshotItem
-Snapshot.objects.filter(code='E2E18N').delete()
-s = Snapshot.objects.create(code='E2E18N', total_value=Decimal('100.00'), contract_to='Corp')
-SnapshotItem.objects.create(snapshot=s, type_id=638, type_name='Raven', quantity=1,
+from buyback.models import Quote, QuoteItem
+Quote.objects.filter(code='E2E18N').delete()
+s = Quote.objects.create(code='E2E18N', total_value=Decimal('100.00'), contract_to='Corp')
+QuoteItem.objects.create(quote=s, type_id=638, type_name='Raven', quantity=1,
     unit_price=Decimal('100.00'), percent_applied=Decimal('100.00'),
     price_source_kind='CUSTOM', price_source_label='Raven Special',
     line_total=Decimal('100.00'))
-SnapshotItem.objects.create(snapshot=s, type_id=587, type_name='Rifter', quantity=1,
+QuoteItem.objects.create(quote=s, type_id=587, type_name='Rifter', quantity=1,
     unit_price=Decimal('0.00'), percent_applied=Decimal('0.00'),
     price_source_kind='BLACKLIST', price_source_label='',
     line_total=Decimal('0.00'), is_flagged=True, flag_reason_code='BLACKLISTED')
@@ -1673,18 +1673,18 @@ with override_settings(ALLOWED_HOSTS=['testserver']):
 print('EVE name verbatim      :', 'Raven' in body)
 print('rule name verbatim     :', 'Raven Special' in body)
 print('system label translated:', 'Malpermesita' in body)
-Snapshot.objects.filter(code='E2E18N').delete()
+Quote.objects.filter(code='E2E18N').delete()
 "
 ```
 Expected: all three `True` — EVE data and the operator's rule name untouched, the system label translated.
 
-- [ ] **Step 6: Verify existing snapshots survived the migration**
+- [ ] **Step 6: Verify existing quotes survived the migration**
 
 Run:
 ```bash
 docker compose exec -T web python manage.py shell -c "
-from buyback.models import SnapshotItem
-for i in SnapshotItem.objects.all()[:10]:
+from buyback.models import QuoteItem
+for i in QuoteItem.objects.all()[:10]:
     print(i.type_name, '|', i.price_source_kind, '|', repr(i.price_source_label), '|', i.flag_reason_code)
 "
 ```
@@ -1707,7 +1707,7 @@ git commit -m "Fix issues found during frontend verification"
 |---|---|
 | §2 Translation boundary (4 buckets) | Tasks 4, 6 |
 | §3 Domain emits keys | Task 2 |
-| §3 SnapshotItem field split | Task 3 |
+| §3 QuoteItem field split | Task 3 |
 | §3 Data migration + reverse | Task 3 Steps 5–6 |
 | §4 Django i18n foundation | Task 5 |
 | §4 Language resolution order | Task 5 (LocaleMiddleware default) |
@@ -1731,7 +1731,7 @@ No spec requirement is unimplemented.
 
 **Placeholder scan:** No TBD/TODO. Every code step contains complete code. The one conditional instruction (Task 3 Step 4, splitting the migration if Django removes columns eagerly) states both branches explicitly rather than deferring a decision.
 
-**Type consistency:** `PriceDecision(percent, source_kind, rule_name, flagged, flag_reason)` is defined in Task 2 Step 3 and constructed in Step 4, consumed in Task 2 Step 6. `QuoteLine(..., price_source_kind, price_source_label, ..., flag_reason)` is defined in Task 2 Step 6 and consumed by `buyback/services.py` in Task 3 Step 7 and the filter in Task 4. `SnapshotItem.price_source_kind` / `.price_source_label` / `.flag_reason_code` are defined in Task 3 Step 3 and used identically in Tasks 4, 6, 7, and 9. `FlagReason` is defined once in `pricing/domain/decisions.py` and re-exported from `buyback/domain/quote.py` (Task 2 Step 5) so tests importing it from either location work.
+**Type consistency:** `PriceDecision(percent, source_kind, rule_name, flagged, flag_reason)` is defined in Task 2 Step 3 and constructed in Step 4, consumed in Task 2 Step 6. `QuoteLine(..., price_source_kind, price_source_label, ..., flag_reason)` is defined in Task 2 Step 6 and consumed by `buyback/services.py` in Task 3 Step 7 and the filter in Task 4. `QuoteItem.price_source_kind` / `.price_source_label` / `.flag_reason_code` are defined in Task 3 Step 3 and used identically in Tasks 4, 6, 7, and 9. `FlagReason` is defined once in `pricing/domain/decisions.py` and re-exported from `buyback/domain/quote.py` (Task 2 Step 5) so tests importing it from either location work.
 
 ---
 
@@ -1767,7 +1767,7 @@ Recorded so the plan is not trusted blindly on a re-run. All are fixed in the co
    data. Fixed by making the enum values uppercase, since they are persisted keys.
 
 5. **Task 6's boundary test depended on Task 7's template wiring.** `test_eve_item_names_are_never_
-   translated_on_the_quote_page` asserts against the rendered quote page, but `snapshot.html` does
+   translated_on_the_quote_page` asserts against the rendered quote page, but `quote.html` does
    not route through the label filters until Task 7. Task 6 cannot pass on its own. Handled with a
    `strict=True` xfail during Task 6, removed in Task 7 — but the ordering is a genuine flaw: the
    test belongs in Task 7, or the template wiring belongs in Task 6.

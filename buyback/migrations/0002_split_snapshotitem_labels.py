@@ -16,18 +16,18 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.AddField(
-            model_name='snapshotitem',
+            model_name='quoteitem',
             name='flag_reason_code',
             field=models.CharField(blank=True, help_text='Machine key for why the line was rejected. Translated at render.', max_length=32, null=True),
         ),
         migrations.AddField(
-            model_name='snapshotitem',
+            model_name='quoteitem',
             name='price_source_kind',
             field=models.CharField(default='', help_text='Machine key for which category of rule won. Translated at render.', max_length=32),
             preserve_default=False,
         ),
         migrations.AddField(
-            model_name='snapshotitem',
+            model_name='quoteitem',
             name='price_source_label',
             field=models.CharField(blank=True, default='', help_text='Admin-authored rule name. Never translated — it is data, not UI.', max_length=120),
         ),

@@ -6,7 +6,7 @@ matching a known system label is therefore treated as a rule name — which
 is the correct reading, since system labels were a closed set.
 
 Unrecognised values degrade to NONE/null rather than failing the migration:
-losing a label is recoverable, refusing to migrate a frozen snapshot is not.
+losing a label is recoverable, refusing to migrate a frozen quote is not.
 """
 
 from django.db import migrations
@@ -27,8 +27,8 @@ FLAG_CODE_BY_LEGACY = {
 
 
 def forwards(apps, schema_editor):
-    SnapshotItem = apps.get_model("buyback", "SnapshotItem")
-    for item in SnapshotItem.objects.all().iterator():
+    QuoteItem = apps.get_model("buyback", "QuoteItem")
+    for item in QuoteItem.objects.all().iterator():
         legacy_source = item.price_source or ""
         kind = SOURCE_KIND_BY_LEGACY.get(legacy_source)
         if kind is None:
@@ -48,10 +48,10 @@ def forwards(apps, schema_editor):
 
 
 def backwards(apps, schema_editor):
-    SnapshotItem = apps.get_model("buyback", "SnapshotItem")
+    QuoteItem = apps.get_model("buyback", "QuoteItem")
     legacy_by_kind = {v: k for k, v in SOURCE_KIND_BY_LEGACY.items()}
     legacy_by_code = {v: k for k, v in FLAG_CODE_BY_LEGACY.items()}
-    for item in SnapshotItem.objects.all().iterator():
+    for item in QuoteItem.objects.all().iterator():
         if item.price_source_kind in ("CUSTOM", "SALE") and item.price_source_label:
             item.price_source = item.price_source_label
         else:
@@ -61,5 +61,5 @@ def backwards(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-    dependencies = [("buyback", "0002_split_snapshotitem_labels")]
+    dependencies = [("buyback", "0002_split_quoteitem_labels")]
     operations = [migrations.RunPython(forwards, backwards)]
