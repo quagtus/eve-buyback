@@ -25,6 +25,8 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.locale.LocaleMiddleware",
+    "config.middleware.AdminEnglishMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -62,13 +64,28 @@ DATABASES = {
     }
 }
 
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = "en"
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
+# Only English ships today. Adding a locale is a directory under locale/
+# plus a translation pass — no code change required.
+LANGUAGES = [
+    ("en", "English"),
+]
+
+LOCALE_PATHS = [BASE_DIR / "locale"]
+
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# Tailwind compiles to static/css/app.css, which is neither an app's static/
+# directory nor inside STATIC_ROOT, so Django cannot see it without this.
+# Without it {% static 'css/app.css' %} resolves to a URL that 404s and
+# collectstatic silently omits the file — the whole site renders unstyled
+# while every test still passes, because tests assert on HTML, not CSS.
+STATICFILES_DIRS = [BASE_DIR / "static"]
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Janice integration
@@ -119,5 +136,20 @@ UNFOLD = {
                 ],
             },
         ],
+    },
+    "COLORS": {
+        "primary": {
+            "50": "245 247 250",
+            "100": "231 237 243",
+            "200": "208 218 231",
+            "300": "174 192 213",
+            "400": "141 165 196",
+            "500": "114 144 182",
+            "600": "93 129 172",
+            "700": "75 106 145",
+            "800": "59 84 114",
+            "900": "47 67 91",
+            "950": "31 44 61",
+        },
     },
 }

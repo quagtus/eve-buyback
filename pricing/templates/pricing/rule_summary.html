@@ -1,38 +1,43 @@
 {% extends "admin/base_site.html" %}
+
 {% block content %}
   <h1>Rule summary</h1>
-  <p>Ordered by precedence: blacklist beats sales, sales beat custom rules,
-     custom rules beat category defaults. Within a tier, the most specific
-     match wins.</p>
+  <p style="color:#6b7280;max-width:60ch">
+    Ordered by precedence: blacklist beats sales, sales beat custom rules,
+    custom rules beat category defaults. Within a tier, the most specific
+    match wins.
+  </p>
 
-  <table style="width:100%;border-collapse:collapse">
-    <thead>
-      <tr>
-        <th style="text-align:left">Tier</th>
-        <th style="text-align:left">Rule</th>
-        <th style="text-align:left">Level</th>
-        <th style="text-align:left">Targets</th>
-        <th style="text-align:right">Percent</th>
-        <th style="text-align:left">Status</th>
-        <th style="text-align:left">Window</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for row in rows %}
-        <tr style="border-top:1px solid #ddd">
-          <td>{{ row.kind }}</td>
-          <td>{{ row.label }}</td>
-          <td>{{ row.level }}</td>
-          <td>{{ row.targets|join:", "|truncatechars:80 }}</td>
-          <td style="text-align:right">
-            {% if row.percent is not None %}{{ row.percent }}%{% else %}—{% endif %}
-          </td>
-          <td>{{ row.status }}</td>
-          <td>{{ row.window }}</td>
+  <div style="overflow-x:auto;border:1px solid #d8dee9;border-radius:8px;margin-top:1rem">
+    <table style="width:100%;border-collapse:collapse;font-size:14px">
+      <thead style="background:#eceff4">
+        <tr>
+          <th style="text-align:left;padding:8px 12px">Tier</th>
+          <th style="text-align:left;padding:8px 12px">Rule</th>
+          <th style="text-align:left;padding:8px 12px">Level</th>
+          <th style="text-align:left;padding:8px 12px">Targets</th>
+          <th style="text-align:right;padding:8px 12px">Percent</th>
+          <th style="text-align:left;padding:8px 12px">Status</th>
+          <th style="text-align:left;padding:8px 12px">Window</th>
         </tr>
-      {% empty %}
-        <tr><td colspan="7">No rules configured yet.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          <tr style="border-top:1px solid #d8dee9">
+            <td style="padding:8px 12px">{{ row.kind }}</td>
+            <td style="padding:8px 12px">{{ row.label }}</td>
+            <td style="padding:8px 12px">{{ row.level }}</td>
+            <td style="padding:8px 12px">{{ row.targets|join:", "|truncatechars:80 }}</td>
+            <td style="padding:8px 12px;text-align:right">
+              {% if row.percent is not None %}{{ row.percent }}%{% else %}—{% endif %}
+            </td>
+            <td style="padding:8px 12px">{{ row.status }}</td>
+            <td style="padding:8px 12px">{{ row.window }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7" style="padding:12px">No rules configured yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 {% endblock %}

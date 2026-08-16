@@ -48,10 +48,22 @@ class SnapshotItem(models.Model):
     quantity = models.BigIntegerField()
     unit_price = models.DecimalField(max_digits=20, decimal_places=2)
     percent_applied = models.DecimalField(max_digits=6, decimal_places=2)
-    price_source = models.CharField(max_length=120)
+    price_source_kind = models.CharField(
+        max_length=32,
+        help_text="Machine key for which category of rule won. Translated at render.",
+    )
+    price_source_label = models.CharField(
+        max_length=120,
+        blank=True,
+        default="",
+        help_text="Admin-authored rule name. Never translated — it is data, not UI.",
+    )
     line_total = models.DecimalField(max_digits=20, decimal_places=2)
     is_flagged = models.BooleanField(default=False)
-    flag_reason = models.CharField(max_length=120, null=True, blank=True)
+    flag_reason_code = models.CharField(
+        max_length=32, null=True, blank=True,
+        help_text="Machine key for why the line was rejected. Translated at render.",
+    )
 
     class Meta:
         ordering = ["id"]

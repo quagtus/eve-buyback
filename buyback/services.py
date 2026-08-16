@@ -84,10 +84,11 @@ def generate_snapshot(
                         quantity=line.quantity,
                         unit_price=line.unit_price,
                         percent_applied=line.percent_applied,
-                        price_source=line.price_source,
+                        price_source_kind=line.price_source_kind,
+                        price_source_label=line.price_source_label,
                         line_total=line.line_total,
                         is_flagged=line.is_flagged,
-                        flag_reason=line.flag_reason,
+                        flag_reason_code=line.flag_reason.value if line.flag_reason else None,
                     )
                     for line in quote.lines
                 ]

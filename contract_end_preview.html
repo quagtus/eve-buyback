@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EVE Online Contract Replication</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      background-color: #000;
+      background-image: radial-gradient(#000);
+      background-size: 16px 16px;
+    }
+    .eve-button-chamfer {
+      clip-path: polygon(0 0, 100% 0, 100% 65%, 85% 100%, 0 100%);
+    }
+    .eve-button-chamfer-border {
+      clip-path: polygon(0 0, 100% 0, 100% 68%, 87% 100%, 0 100%);
+    }
+  </style>
+</head>
+<body class="min-h-screen text-gray-300 font-mono flex items-center justify-center p-4">
+
+  <div class="w-full max-w-2xl bg-black/90 relative pb-6 border border-gray-800 rounded-sm shadow-2xl">
+    
+    <!-- Window Header -->
+    <div class="flex justify-between items-center px-4 py-2 border-b border-gray-800 bg-[#020508]">
+      <div class="flex items-center gap-2 text-sm text-gray-200">
+        <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"></path>
+        </svg>
+        <span>Create Contract</span>
+      </div>
+      <div class="flex gap-4 text-gray-400 text-lg cursor-default tracking-widest">
+        <span class="hover:text-white transition-colors">⋮</span>
+        <span class="hover:text-white transition-colors">−</span>
+        <span class="hover:text-white transition-colors">✕</span>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="p-6">
+      <h1 class="text-white text-[22px] mb-8 tracking-wide font-normal">Confirm (4/4)</h1>
+
+      <div class="grid grid-cols-[160px_1fr] gap-y-2 text-[14px]">
+        
+        <div class="font-bold text-gray-100">Contract Type</div>
+        <div>Item Exchange</div>
+
+        <div class="font-bold text-gray-100">Description</div>
+        <div>[[the quote ID]]</div>
+
+        <div class="font-bold text-gray-100">Availability</div>
+        <div>Private (<span class="text-[#fca311] font-bold hover:underline cursor-pointer">[[admin::owner name of the buyback]]</span>)</div>
+
+        <div class="font-bold text-gray-100">Location</div>
+        <div><span class="text-[#fca311] font-bold hover:underline underline cursor-pointer decoration-[#fca311]">[[admin::station name]]</span></div>
+
+        <div class="font-bold text-gray-100">Expiration</div>
+        <div>[[date calculated]] ([[admin::contract expiration days]] days)</div>
+
+        <div class="font-bold text-gray-100">Sales Tax</div>
+        <div>(None)</div>
+
+        <div class="font-bold text-gray-100">Broker's Fee</div>
+        <div>10 000 ISK</div>
+
+        <div class="font-bold text-gray-100 pb-2">Deposit</div>
+        <div class="pb-2">0 ISK</div>
+
+        <!-- Divider -->
+        <div class="col-span-2 border-t border-[#4a5568] my-2"></div>
+
+        <div class="font-bold text-gray-100 pt-2">I will pay</div>
+        <div class="pt-2">0 ISK</div>
+
+        <div class="font-bold text-gray-100">I will receive</div>
+        <div>[[quote amount in number]] ISK</div>
+
+        <div class="font-bold text-gray-100 pt-1">Items For Sale</div>
+        <div class="leading-tight pt-1">
+          [[quote item]] x [[quantity in number]]<br>
+          [[quote item]] x [[quantity in number]]
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Footer Buttons -->
+    <div class="flex justify-center gap-3 mt-32 mb-2">
+      <button class="bg-[#0b131a] border border-[#2a3c4d] text-[#b0bec5] px-8 py-[6px] text-sm hover:bg-[#152330] hover:text-white transition-colors">
+        Cancel
+      </button>
+      
+      <!-- Chamfered Finish Button -->
+      <div class="bg-[#2a3c4d] p-[1px] eve-button-chamfer-border">
+        <button class="bg-[#0b131a] text-[#b0bec5] px-8 py-[6px] text-sm hover:bg-[#152330] hover:text-white transition-colors eve-button-chamfer block w-full h-full">
+          Finish
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>

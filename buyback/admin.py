@@ -10,8 +10,8 @@ class SnapshotItemInline(TabularInline):
     extra = 0
     can_delete = False
     fields = [
-        "type_name", "quantity", "unit_price",
-        "percent_applied", "price_source", "line_total", "flag_reason",
+        "type_name", "quantity", "unit_price", "percent_applied",
+        "price_source_kind", "price_source_label", "line_total", "flag_reason_code",
     ]
     readonly_fields = fields
 
@@ -33,7 +33,7 @@ class SnapshotAdmin(ModelAdmin):
 
     @admin.display(description="Public page")
     def public_link(self, obj):
-        return format_html('<a href="/quote/{}/" target="_blank">open</a>', obj.code)
+        return format_html('<a href="/q/{}/" target="_blank">open</a>', obj.code)
 
     def has_add_permission(self, request):
         return False

@@ -25,5 +25,13 @@ services:
       db:
         condition: service_healthy
 
+  tailwind:
+    build: .
+    command: tailwindcss -i assets/css/input.css -o static/css/app.css --watch
+    volumes:
+      - .:/app
+    depends_on:
+      - web
+
 volumes:
   pgdata:

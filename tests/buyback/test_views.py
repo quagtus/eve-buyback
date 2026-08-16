@@ -22,7 +22,8 @@ def priced_snapshot(db):
         quantity=2,
         unit_price=Decimal("100.00"),
         percent_applied=Decimal("70.00"),
-        price_source="Battleships",
+        price_source_kind="CUSTOM",
+        price_source_label="Battleships",
         line_total=Decimal("140.00"),
     )
     SnapshotItem.objects.create(
@@ -32,10 +33,10 @@ def priced_snapshot(db):
         quantity=1,
         unit_price=Decimal("50.00"),
         percent_applied=Decimal("0.00"),
-        price_source="Blacklisted",
+        price_source_kind="BLACKLIST",
         line_total=Decimal("0.00"),
         is_flagged=True,
-        flag_reason="Blacklisted",
+        flag_reason_code="BLACKLISTED",
     )
     return snapshot
 

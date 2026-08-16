@@ -112,7 +112,13 @@ eve-buyback/
 `@source` paths are relative to this file. All four template locations must be listed or their classes get purged.
 
 ```css
-@import "tailwindcss";
+/* source(none) disables Tailwind v4's automatic project-root scanning.
+   Without it, Tailwind treats every file in the repo as a source — including
+   docs/*.md, which contain the full template markup from this very plan. That
+   was verified leaking: a class mentioned only in a markdown file was compiled
+   into the shipped stylesheet, and output was 16.4 KB instead of 5.7 KB.
+   With source(none), only the three directories declared below are scanned. */
+@import "tailwindcss" source(none);
 
 @source "../../templates";
 @source "../../buyback/templates";
@@ -217,16 +223,43 @@ docker compose run --rm --no-deps web tailwindcss -i assets/css/input.css -o /tm
 ```
 Expected: `Done in <N>ms` and no errors.
 
-- [ ] **Step 6: Verify semantic utilities are generated and purging works**
+- [ ] **Step 6: Verify purging works and docs are not being scanned**
+
+Do NOT probe with `bg-surface` or other `@theme` colours — measured behaviour: Tailwind v4 emits utilities for `@theme`-declared colours **unconditionally**, so their presence proves nothing about whether `@source` is wired. Probe with ordinary utilities instead.
 
 Run:
 ```bash
+echo 'class="bg-lime-300"' > docs/_probe.md
 docker compose run --rm --no-deps web sh -c \
-  'tailwindcss -i assets/css/input.css -o /tmp/probe.css --minify >/dev/null 2>&1; \
-   for c in bg-surface text-text-muted text-danger; do \
-     grep -q "$c" /tmp/probe.css && echo "FOUND $c" || echo "MISSING $c"; done'
+  'tailwindcss -i assets/css/input.css -o /tmp/probe.css >/dev/null 2>&1; \
+   grep -q "bg-lime-300" /tmp/probe.css && echo "LEAK: docs scanned" || echo "ok: docs excluded"; \
+   grep -q "\.rounded-lg" /tmp/probe.css && echo "BLOAT: unused utility present" || echo "ok: unused purged"; \
+   wc -c /tmp/probe.css'
+rm -f docs/_probe.md
 ```
-Expected: at this point classes are only generated if a template uses them. Until Task 7 restyles the templates, `MISSING` is correct and expected — this step establishes the baseline. Re-run it after Task 7 and expect `FOUND`.
+Expected:
+```
+ok: docs excluded
+ok: unused purged
+<about 5-6 KB>
+```
+
+A `LEAK` result means `source(none)` is missing from `input.css`. A size near 16 KB means the same thing.
+
+- [ ] **Step 6b: Confirm all three template directories are actually scanned**
+
+Run:
+```bash
+printf '<div class="tabular-nums"></div>\n' >> templates/base.html
+printf '<div class="overflow-x-auto"></div>\n' >> buyback/templates/buyback/form.html
+printf '<div class="rounded-lg"></div>\n' >> pricing/templates/pricing/rule_summary.html
+docker compose run --rm --no-deps web sh -c \
+  'tailwindcss -i assets/css/input.css -o /tmp/probe.css >/dev/null 2>&1; \
+   for c in tabular-nums overflow-x-auto rounded-lg; do \
+     grep -q "\.$c" /tmp/probe.css && echo "FOUND $c" || echo "MISSING $c"; done'
+git checkout templates/base.html buyback/templates/buyback/form.html pricing/templates/pricing/rule_summary.html
+```
+Expected: all three `FOUND`. Any `MISSING` means that directory's `@source` path is wrong.
 
 - [ ] **Step 7: Commit**
 
@@ -320,6 +353,29 @@ class PriceDecision:
 ```
 
 Add to the same file, above `PriceDecision`:
+
+```python
+Also change `PriceSourceKind`'s values to UPPERCASE in the same file. They were
+lowercase (`"blacklist"`), but they are persisted to `price_source_kind` and read
+back by the Task 4 filter, which uses uppercase keys — and the Task 3 backfill
+writes uppercase too. Left lowercase, every newly generated quote renders a blank
+Source column while backfilled rows look correct:
+
+```python
+class PriceSourceKind(StrEnum):
+    """Which category of rule set an item's price.
+
+    Values are UPPERCASE because they are persisted and looked up by the
+    presentation layer; they must match the backfill migration's keys and
+    the template filter's keys.
+    """
+
+    BLACKLIST = "BLACKLIST"
+    SALE = "SALE"
+    CUSTOM = "CUSTOM"
+    CATEGORY_DEFAULT = "CATEGORY_DEFAULT"
+    NONE = "NONE"
+```
 
 ```python
 class FlagReason(StrEnum):
@@ -1138,7 +1194,7 @@ def test_eve_item_names_are_never_translated_on_the_quote_page():
     ):
         client = Client()
         client.cookies["django_language"] = "eo"
-        body = client.get("/quote/I18NTEST/").content.decode()
+        body = client.get("/q/I18NTEST/").content.decode()
 
     # EVE data and the operator's rule name survive verbatim...
     assert "Raven" in body
@@ -1398,10 +1454,21 @@ Run:
 ```bash
 docker compose exec web tailwindcss -i assets/css/input.css -o static/css/app.css --minify
 docker compose exec web sh -c \
-  'for c in bg-surface text-text-muted text-danger bg-danger-surface tabular-nums; do
-     grep -q "$c" static/css/app.css && echo "FOUND $c" || echo "MISSING $c"; done'
+  'for c in tabular-nums overflow-x-auto bg-danger-surface antialiased; do
+     grep -q "\.$c" static/css/app.css && echo "FOUND $c" || echo "MISSING $c"; done
+   wc -c static/css/app.css'
 ```
-Expected: all `FOUND`. This is the re-run of Task 1 Step 6 and is what proves `@source` is picking up the template directories.
+Expected: all four `FOUND`, because the templates you just wrote use them. These are ordinary utilities, not `@theme` colours — `@theme` colours emit unconditionally and so cannot tell you whether `@source` worked.
+
+Also re-confirm docs are still excluded now that more markup exists:
+```bash
+echo 'class="bg-lime-300"' > docs/_probe.md
+docker compose exec web sh -c \
+  'tailwindcss -i assets/css/input.css -o /tmp/probe.css >/dev/null 2>&1; \
+   grep -q "bg-lime-300" /tmp/probe.css && echo "LEAK" || echo "ok: docs excluded"'
+rm -f docs/_probe.md
+```
+Expected: `ok: docs excluded`
 
 - [ ] **Step 6: Verify the pages still render and escaping still holds**
 
@@ -1602,7 +1669,7 @@ SnapshotItem.objects.create(snapshot=s, type_id=587, type_name='Rifter', quantit
     line_total=Decimal('0.00'), is_flagged=True, flag_reason_code='BLACKLISTED')
 with override_settings(ALLOWED_HOSTS=['testserver']):
     c = Client(); c.cookies['django_language'] = 'eo'
-    body = c.get('/quote/E2E18N/').content.decode()
+    body = c.get('/q/E2E18N/').content.decode()
 print('EVE name verbatim      :', 'Raven' in body)
 print('rule name verbatim     :', 'Raven Special' in body)
 print('system label translated:', 'Malpermesita' in body)
@@ -1665,6 +1732,50 @@ No spec requirement is unimplemented.
 **Placeholder scan:** No TBD/TODO. Every code step contains complete code. The one conditional instruction (Task 3 Step 4, splitting the migration if Django removes columns eagerly) states both branches explicitly rather than deferring a decision.
 
 **Type consistency:** `PriceDecision(percent, source_kind, rule_name, flagged, flag_reason)` is defined in Task 2 Step 3 and constructed in Step 4, consumed in Task 2 Step 6. `QuoteLine(..., price_source_kind, price_source_label, ..., flag_reason)` is defined in Task 2 Step 6 and consumed by `buyback/services.py` in Task 3 Step 7 and the filter in Task 4. `SnapshotItem.price_source_kind` / `.price_source_label` / `.flag_reason_code` are defined in Task 3 Step 3 and used identically in Tasks 4, 6, 7, and 9. `FlagReason` is defined once in `pricing/domain/decisions.py` and re-exported from `buyback/domain/quote.py` (Task 2 Step 5) so tests importing it from either location work.
+
+---
+
+## Errata — defects in this plan, found during implementation
+
+Recorded so the plan is not trusted blindly on a re-run. All are fixed in the codebase.
+
+1. **`STATICFILES_DIRS` was never set, so the stylesheet 404'd.** Task 1 compiles Tailwind to
+   `static/css/app.css`, which is neither an app's `static/` directory nor inside `STATIC_ROOT`.
+   Django therefore never saw it: `findstatic` reported "No matching file found",
+   `GET /static/css/app.css` returned **404**, and `collectstatic` silently omitted it from the
+   production image. The entire restyle was invisible in dev and production while the whole
+   suite stayed green — because every other test asserts on HTML, never on whether the
+   stylesheet resolves. Fixed by adding `STATICFILES_DIRS = [BASE_DIR / "static"]`, plus
+   `tests/test_static_assets.py` as a regression guard (verified load-bearing: it fails when
+   `STATICFILES_DIRS` is emptied).
+
+2. **Tailwind v4 auto-scans the project root, so `docs/*.md` leaked into the CSS.** This plan
+   and its spec contain the full template markup, and Tailwind compiled every class mentioned
+   in them into the shipped stylesheet (16.4 KB instead of 5.7 KB). Fixed with
+   `@import "tailwindcss" source(none);` so only the three declared `@source` directories are
+   scanned.
+
+3. **The `@source` probes in Task 1 Step 6 and Task 7 Step 5 tested nothing.** They probed with
+   `bg-surface`, but Tailwind v4 emits utilities for `@theme`-declared colours *unconditionally* —
+   their presence is independent of whether any template was scanned. Both steps now probe with
+   ordinary utilities (`tabular-nums`, `overflow-x-auto`) and add an explicit docs-leak check.
+
+4. **`PriceSourceKind` values were lowercase while everything reading them used uppercase.**
+   The Task 3 backfill writes `"BLACKLIST"` and the Task 4 filter looks up `"BLACKLIST"`, but the
+   enum's values were `"blacklist"`. Every *newly generated* quote would have rendered a blank
+   Source column while backfilled rows looked correct — a silent divergence between old and new
+   data. Fixed by making the enum values uppercase, since they are persisted keys.
+
+5. **Task 6's boundary test depended on Task 7's template wiring.** `test_eve_item_names_are_never_
+   translated_on_the_quote_page` asserts against the rendered quote page, but `snapshot.html` does
+   not route through the label filters until Task 7. Task 6 cannot pass on its own. Handled with a
+   `strict=True` xfail during Task 6, removed in Task 7 — but the ordering is a genuine flaw: the
+   test belongs in Task 7, or the template wiring belongs in Task 6.
+
+6. **`gettext` was missing from the image.** Task 6 needs `compilemessages`. Folded into Task 1's
+   `Dockerfile` apt line rather than discovered mid-plan.
+
+---
 
 **Known follow-ups, out of scope:**
 - HTMX swapping `body` with `outerHTML` on language change re-runs the pre-paint script; the theme is re-read from `localStorage`, so it stays stable. Worth re-verifying if the swap target changes.

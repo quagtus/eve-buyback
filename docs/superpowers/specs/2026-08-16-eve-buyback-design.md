@@ -108,7 +108,7 @@ Config: Ship default 80% · CustomRule "Battleships" → group Battleship, 70% �
 | Line Janice couldn't parse | either | 0%, flagged | Janice `failures` |
 
 ### `buyback`
-- `Snapshot` — primary key **is** the Janice appraisal code (`CharField` PK), used directly as the public slug `/quote/<code>/`. Stored once, not duplicated into a second field. Other fields: `created_at`, `total_value`, and a **frozen copy** of the contract-to instructions text as it read at generation time.
+- `Snapshot` — primary key **is** the Janice appraisal code (`CharField` PK), used directly as the public slug `/q/<code>/`. Stored once, not duplicated into a second field. Other fields: `created_at`, `total_value`, and a **frozen copy** of the contract-to instructions text as it read at generation time.
 - `SnapshotItem` — `type_id`, `type_name`, `quantity`, `unit_price` (Janice `effectivePrices`), `percent_applied`, `price_source` (which rule won), `line_total`, `is_flagged`, `flag_reason`.
 
 **Snapshots store resolved values, not live references.** Percent, source, prices, and contract instructions are copied in at generation time. Later edits to rules, blacklist, or settings must never alter an already-generated page.
@@ -125,7 +125,7 @@ One step — submitting the paste generates the permanent page directly.
 2. `buyback` sends the raw text to `PriceAppraisalGateway.create_appraisal(...)` with `persist=true` and the admin-configured market/pricing/pricingVariant. Janice returns the `code`, priced `items[]`, and `failures`.
 3. For each returned item, `pricing.resolve_price(type_id, now)` yields the percent and source. Blacklisted, unconfigured, and unpriceable items are flagged, forced to 0, and rendered in a red box. Entries in `failures` become flagged zero-value line items so the seller sees exactly what was rejected.
 4. `buyback` persists a `Snapshot` keyed by the Janice code, with frozen `SnapshotItem`s, frozen contract instructions, and the computed total.
-5. Seller is redirected to `/quote/<code>/` — permanent, never re-rendered from live data.
+5. Seller is redirected to `/q/<code>/` — permanent, never re-rendered from live data.
 
 If Janice returns no parseable items at all, no snapshot is created and the form shows an error.
 

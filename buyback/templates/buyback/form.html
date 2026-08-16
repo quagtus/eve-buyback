@@ -1,16 +1,31 @@
 {% extends "base.html" %}
+{% load i18n %}
+
 {% block content %}
-  <p>Paste your items below (copy from your in-game inventory) to get a buyback quote.</p>
+  <p class="mb-4 text-text-muted">
+    {% translate "Paste your items below (copy from your in-game inventory) to get a buyback quote." %}
+  </p>
 
   <div id="result"></div>
 
-  <form hx-post="{% url 'buyback:submit' %}" hx-target="#result" hx-swap="innerHTML">
+  <form hx-post="{% url 'buyback:submit' %}" hx-target="#result" hx-swap="innerHTML"
+        class="mt-4">
     {% csrf_token %}
-    <textarea name="raw_text" placeholder="Raven	1&#10;Tritanium	1000"></textarea>
-    <button type="submit">Get quote</button>
+    <textarea name="raw_text" rows="12"
+              placeholder="{% translate 'Raven	1' %}&#10;{% translate 'Tritanium	1000' %}"
+              class="w-full rounded-lg border border-border-token bg-surface-raised p-3
+                     font-mono text-sm text-text placeholder:text-text-muted
+                     focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"></textarea>
+    <button type="submit"
+            class="mt-4 rounded-lg bg-accent px-5 py-2 font-medium text-accent-contrast
+                   hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-accent">
+      {% translate "Get quote" %}
+    </button>
   </form>
 
   {% if config.contract_to %}
-    <p class="muted">Accepted contracts go to <strong>{{ config.contract_to }}</strong>.</p>
+    <p class="mt-6 text-sm text-text-muted">
+      {% blocktranslate with corp=config.contract_to %}Accepted contracts go to <strong>{{ corp }}</strong>.{% endblocktranslate %}
+    </p>
   {% endif %}
 {% endblock %}
