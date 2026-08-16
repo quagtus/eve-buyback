@@ -10,8 +10,8 @@ class SnapshotItemInline(TabularInline):
     extra = 0
     can_delete = False
     fields = [
-        "type_name", "quantity", "unit_price",
-        "percent_applied", "price_source", "line_total", "flag_reason",
+        "type_name", "quantity", "unit_price", "percent_applied",
+        "price_source_kind", "price_source_label", "line_total", "flag_reason_code",
     ]
     readonly_fields = fields
 

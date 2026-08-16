@@ -71,7 +71,8 @@ def test_generates_a_snapshot_with_frozen_values(configured):
 
     item = snapshot.items.get()
     assert item.percent_applied == Decimal("70.00")
-    assert item.price_source == "Battleships"
+    assert item.price_source_kind == "custom"
+    assert item.price_source_label == "Battleships"
 
 
 @pytest.mark.django_db
@@ -206,7 +207,7 @@ def test_type_id_absent_from_catalog_is_flagged_via_real_classifications_query(
 
     unknown = items[UNKNOWN_TYPE_ID]
     assert unknown.is_flagged is True
-    assert unknown.flag_reason == "Unrecognized item"
+    assert unknown.flag_reason_code == "UNRECOGNIZED"
     assert unknown.line_total == Decimal("0.00")
 
     assert snapshot.total_value == Decimal("140.00")

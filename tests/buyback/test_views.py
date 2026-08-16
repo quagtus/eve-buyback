@@ -22,7 +22,8 @@ def priced_snapshot(db):
         quantity=2,
         unit_price=Decimal("100.00"),
         percent_applied=Decimal("70.00"),
-        price_source="Battleships",
+        price_source_kind="custom",
+        price_source_label="Battleships",
         line_total=Decimal("140.00"),
     )
     SnapshotItem.objects.create(
@@ -32,10 +33,10 @@ def priced_snapshot(db):
         quantity=1,
         unit_price=Decimal("50.00"),
         percent_applied=Decimal("0.00"),
-        price_source="Blacklisted",
+        price_source_kind="blacklist",
         line_total=Decimal("0.00"),
         is_flagged=True,
-        flag_reason="Blacklisted",
+        flag_reason_code="BLACKLISTED",
     )
     return snapshot
 
@@ -56,7 +57,7 @@ def test_snapshot_page_shows_items_totals_and_flags(client, priced_snapshot):
     body = response.content.decode()
     assert "Raven" in body
     assert "140.00" in body
-    assert "Blacklisted" in body
+    assert "BLACKLISTED" in body
     assert "Buyback Corp" in body
     assert "janice.e-351.com/a/4ovArs" in body
 

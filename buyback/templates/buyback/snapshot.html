@@ -23,12 +23,12 @@
         <tr class="{% if item.is_flagged %}flagged{% endif %}">
           <td>
             {{ item.type_name }}
-            {% if item.is_flagged %}<br><small>{{ item.flag_reason }}</small>{% endif %}
+            {% if item.is_flagged %}<br><small>{{ item.flag_reason_code }}</small>{% endif %}
           </td>
           <td class="num">{{ item.quantity }}</td>
           <td class="num">{{ item.unit_price }}</td>
           <td class="num">{{ item.percent_applied }}%</td>
-          <td>{{ item.price_source }}</td>
+          <td>{{ item.price_source_label|default:item.price_source_kind }}</td>
           <td class="num">{{ item.line_total }}</td>
         </tr>
       {% endfor %}
