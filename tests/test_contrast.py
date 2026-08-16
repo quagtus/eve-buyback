@@ -99,18 +99,14 @@ def test_light_mode_does_not_use_the_raw_eve_amber():
     assert DARK["accent"] == "#fca311"
 
 
-def _compiled_css():
-    return open(finders.find("css/app.css"), encoding="utf-8").read().lower()
-
-
 def _hex_shorthand(value):
     """The minified build (lightningcss) collapses #rrggbb to #rgb whenever
+    each channel repeats a digit — valid CSS, e.g. #ffffff -> #fff.
 
-    each channel repeats a digit — valid CSS, e.g. #ffffff -> #fff. Only
-    --accent-contrast's #ffffff qualifies among this file's tokens, but a
-    literal substring check would otherwise pass against the unminified dev
+    Only --accent-contrast's #ffffff qualifies among these tokens, but a
+    literal comparison would otherwise pass against the unminified dev
     --watch output and fail against the minified image build. Returns None
-    when no channel-doubling applies, i.e. no shorthand exists.
+    when no shorthand exists.
     """
     digits = value.lstrip("#")
     if len(digits) == 6 and all(digits[i] == digits[i + 1] for i in (0, 2, 4)):
@@ -118,17 +114,53 @@ def _hex_shorthand(value):
     return None
 
 
-@pytest.mark.parametrize("theme_name,theme", [("dark", DARK), ("light", LIGHT)])
-def test_every_token_value_reaches_the_compiled_css(theme_name, theme):
-    """The table above is only meaningful if these values are what ship."""
-    css = re.sub(r"\s+", "", _compiled_css())
+def _compiled_css():
+    return open(finders.find("css/app.css"), encoding="utf-8").read().lower()
 
-    for token, value in theme.items():
-        shorthand = _hex_shorthand(value)
-        present = value.lower() in css or (
-            shorthand is not None and shorthand.lower() in css
-        )
-        assert present, (
-            f"{theme_name}: --{token} value {value} is not in the compiled CSS. "
-            f"Did input.css and this test drift apart?"
+
+def _token_blocks(css):
+    """Map each theme selector to its token -> value bindings.
+
+    Presence alone is not enough. Both themes' values live in the same
+    stylesheet, so a check that merely asks "does #fca311 appear anywhere"
+    passes even when a block binds the wrong colour — verified: corrupting
+    :root's accent left :root.dark's copy behind and the check still passed.
+    Parsing the bindings per block is what actually catches a bad swap.
+    """
+    flat = re.sub(r"\s+", "", css)
+    blocks = {}
+    for selector, body in re.findall(r"(:root(?:\.[a-z]+|:not\(\.[a-z]+\))?)\{([^}]*)\}", flat):
+        if "--surface:" not in body:
+            continue  # Tailwind's own :root preflight carries no design tokens
+        blocks[selector] = dict(re.findall(r"--([a-z-]+):(#[0-9a-f]{3,6})", body))
+    return blocks
+
+
+def _matches(actual, expected):
+    """Compare allowing the minifier's #rrggbb -> #rgb shorthand."""
+    if actual == expected:
+        return True
+    shorthand = _hex_shorthand(expected)
+    return shorthand is not None and actual == shorthand.lower()
+
+
+@pytest.mark.parametrize(
+    "selector,theme,label",
+    [
+        (":root", DARK, "bare :root (the no-JS default)"),
+        (":root.dark", DARK, "explicit dark"),
+        (":root.light", LIGHT, "explicit light"),
+        (":root:not(.dark)", LIGHT, "OS-prefers-light fallback"),
+    ],
+)
+def test_each_theme_block_binds_the_expected_token_values(selector, theme, label):
+    blocks = _token_blocks(_compiled_css())
+
+    assert selector in blocks, f"{label}: no token block for {selector} in compiled CSS"
+
+    for token, expected in theme.items():
+        actual = blocks[selector].get(token)
+        assert actual is not None, f"{label}: --{token} missing from {selector}"
+        assert _matches(actual, expected.lower()), (
+            f"{label}: --{token} is {actual} in {selector}, expected {expected}"
         )
