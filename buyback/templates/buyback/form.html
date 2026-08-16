@@ -27,7 +27,11 @@
                              placeholder:text-text-muted focus:outline-none"></textarea>
           </div>
 
-          <div class="mt-4 inline-block eve-frame-sm bg-accent p-px">
+          {% comment %} Frame and fill are both accent, so focus-within:bg-accent would be a
+   no-op. The hairline flips to accent-contrast instead, giving a visible
+   ring (10.11 dark / 6.51 light). Without this, focus:outline-none below
+   would leave the primary CTA with no keyboard focus indicator at all. {% endcomment %}
+          <div class="mt-4 inline-block eve-frame-sm bg-accent p-px focus-within:bg-accent-contrast">
             <button type="submit"
                     class="eve-fill-sm bg-accent px-6 py-2 text-xs font-semibold uppercase
                            tracking-[0.15em] text-accent-contrast hover:brightness-110
