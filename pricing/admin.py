@@ -5,18 +5,7 @@ from unfold.admin import ModelAdmin
 from pricing.domain.overlap import find_conflicts
 from pricing.domain.ruleset import Rule
 from pricing.models import BlacklistEntry, CategoryDefaultPercent, CustomRule, SaleRule
-
-
-def _to_domain_rule(instance) -> Rule:
-    return Rule(
-        label=instance.label,
-        percent=instance.percent,
-        category_ids=frozenset(c.id for c in instance.categories.all()),
-        group_ids=frozenset(g.id for g in instance.groups.all()),
-        type_ids=frozenset(t.id for t in instance.types.all()),
-        valid_from=getattr(instance, "valid_from", None),
-        valid_to=getattr(instance, "valid_to", None),
-    )
+from pricing.repositories import to_domain_rule
 
 
 class TargetedRuleForm(forms.ModelForm):
@@ -47,7 +36,7 @@ class TargetedRuleForm(forms.ModelForm):
         if self.instance.pk:
             others = others.exclude(pk=self.instance.pk)
 
-        conflicts = find_conflicts(candidate, [_to_domain_rule(o) for o in others])
+        conflicts = find_conflicts(candidate, [to_domain_rule(o) for o in others])
         if conflicts:
             raise forms.ValidationError(
                 "Overlaps existing rule(s) at the same level: "

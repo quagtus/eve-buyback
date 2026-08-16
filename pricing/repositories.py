@@ -7,15 +7,22 @@ from pricing.domain.ruleset import Rule, RuleSet
 from pricing.models import BlacklistEntry, CategoryDefaultPercent, CustomRule, SaleRule
 
 
-def _to_rule(instance, *, with_window: bool) -> Rule:
+def to_domain_rule(instance) -> Rule:
+    """Map a CustomRule or SaleRule model instance to a domain Rule.
+
+    `getattr(..., "valid_from", None)` already yields None for CustomRule,
+    which has no such field, so a rule with no window is naturally "always
+    active" — the correct semantics for a custom rule — without needing a
+    separate flag to suppress it.
+    """
     return Rule(
         label=instance.label,
         percent=instance.percent,
         category_ids=frozenset(c.id for c in instance.categories.all()),
         group_ids=frozenset(g.id for g in instance.groups.all()),
         type_ids=frozenset(t.id for t in instance.types.all()),
-        valid_from=getattr(instance, "valid_from", None) if with_window else None,
-        valid_to=getattr(instance, "valid_to", None) if with_window else None,
+        valid_from=getattr(instance, "valid_from", None),
+        valid_to=getattr(instance, "valid_to", None),
     )
 
 
@@ -35,8 +42,8 @@ def load_ruleset() -> RuleSet:
         blacklist_type_ids=frozenset(
             e.type_id for e in entries if e.type_id is not None
         ),
-        sales=tuple(_to_rule(rule, with_window=True) for rule in sales),
-        custom_rules=tuple(_to_rule(rule, with_window=False) for rule in custom),
+        sales=tuple(to_domain_rule(rule) for rule in sales),
+        custom_rules=tuple(to_domain_rule(rule) for rule in custom),
         category_defaults={
             row.category_id: row.percent
             for row in CategoryDefaultPercent.objects.all()

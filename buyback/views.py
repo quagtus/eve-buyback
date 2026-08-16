@@ -7,6 +7,7 @@ from django_ratelimit.decorators import ratelimit
 from buyback.domain.gateway import AppraisalError
 from buyback.models import Snapshot
 from buyback.services import (
+    DuplicateSnapshotError,
     EmptyAppraisalError,
     build_default_gateway,
     generate_snapshot,
@@ -70,6 +71,8 @@ def submit(request):
         snapshot = generate_snapshot(raw_text, build_default_gateway())
     except EmptyAppraisalError:
         return _error(request, "None of those lines could be priced.")
+    except DuplicateSnapshotError:
+        return _error(request, "That quote already exists. Please try again.")
     except AppraisalError:
         return _error(
             request, "The price service is unavailable right now. Please try again."

@@ -74,43 +74,54 @@ class JaniceAppraisalGateway:
         return self._to_result(payload)
 
     def _to_result(self, payload: dict) -> AppraisalResult:
-        code = payload.get("code")
-        if not code:
-            raise AppraisalError("Janice response contained no appraisal code")
+        # A 200 response is not a guarantee of the expected shape. Everything
+        # below that merely walks the payload (missing keys, wrong types) is
+        # wrapped so a surprise shape becomes an AppraisalError the view
+        # already knows how to turn into a friendly page, not a raw 500.
+        # The explicit AppraisalError raises below are NOT caught here: they
+        # are already the clear, specific error we want the caller to see.
+        try:
+            code = payload.get("code")
+            if not code:
+                raise AppraisalError("Janice response contained no appraisal code")
 
-        price_field = PRICE_FIELDS.get(self._pricing_basis)
-        if price_field is None:
-            raise AppraisalError(
-                f"Unknown pricing basis: {self._pricing_basis!r}"
-            )
-
-        items = []
-        unparseable = []
-        for entry in payload.get("items") or []:
-            item_type = entry.get("itemType") or {}
-            prices = entry.get("effectivePrices") or {}
-            raw_price = prices.get(price_field)
-            if item_type.get("eid") is None or raw_price is None:
-                # Never drop it silently: surface it as a flagged zero-value
-                # line so the seller can see what was rejected and why.
-                name = item_type.get("name")
-                unparseable.append(f"Unparseable item entry: {name or 'unknown'}")
-                continue
-            # raw_price already arrives as a Decimal (parse_float=Decimal
-            # above); str() round-trip is redundant but harmless if that
-            # ever changes.
-            items.append(
-                AppraisalItem(
-                    type_id=int(item_type["eid"]),
-                    name=item_type.get("name") or "",
-                    quantity=int(entry.get("amount") or 0),
-                    unit_price=Decimal(str(raw_price)),
+            price_field = PRICE_FIELDS.get(self._pricing_basis)
+            if price_field is None:
+                raise AppraisalError(
+                    f"Unknown pricing basis: {self._pricing_basis!r}"
                 )
-            )
 
-        raw_failures = payload.get("failures") or ""
-        failures = tuple(
-            line.strip() for line in raw_failures.splitlines() if line.strip()
-        ) + tuple(unparseable)
+            items = []
+            unparseable = []
+            for entry in payload.get("items") or []:
+                item_type = entry.get("itemType") or {}
+                prices = entry.get("effectivePrices") or {}
+                raw_price = prices.get(price_field)
+                if item_type.get("eid") is None or raw_price is None:
+                    # Never drop it silently: surface it as a flagged zero-value
+                    # line so the seller can see what was rejected and why.
+                    name = item_type.get("name")
+                    unparseable.append(f"Unparseable item entry: {name or 'unknown'}")
+                    continue
+                # raw_price already arrives as a Decimal (parse_float=Decimal
+                # above); str() round-trip is redundant but harmless if that
+                # ever changes.
+                items.append(
+                    AppraisalItem(
+                        type_id=int(item_type["eid"]),
+                        name=item_type.get("name") or "",
+                        quantity=int(entry.get("amount") or 0),
+                        unit_price=Decimal(str(raw_price)),
+                    )
+                )
+
+            raw_failures = payload.get("failures") or ""
+            failures = tuple(
+                line.strip() for line in raw_failures.splitlines() if line.strip()
+            ) + tuple(unparseable)
+        except (AttributeError, KeyError, TypeError, ValueError) as exc:
+            raise AppraisalError(
+                f"Janice returned an unexpected response shape: {exc}"
+            ) from exc
 
         return AppraisalResult(code=code, items=tuple(items), failures=failures)

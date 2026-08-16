@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from buyback.domain.appraisal import AppraisalItem, AppraisalResult
-from buyback.domain.quote import MAX_TYPE_NAME_LENGTH, build_quote
+from buyback.domain.quote import MAX_TYPE_NAME_LENGTH, NO_SOURCE_LABEL, build_quote
 from pricing.domain.ruleset import ItemClassification, Rule, RuleSet
 
 NOW = datetime(2026, 8, 16, 12, 0, tzinfo=timezone.utc)
@@ -66,6 +66,9 @@ def test_item_missing_from_catalog_is_flagged_not_crashed():
 
     assert quote.lines[0].is_flagged is True
     assert quote.lines[0].flag_reason == "Unrecognized item"
+    # A raw enum value like "none" must never reach the seller-facing Source
+    # column; the flag_reason already explains why there's no source.
+    assert quote.lines[0].price_source == NO_SOURCE_LABEL
     assert quote.total_value == Decimal("0.00")
 
 
@@ -94,6 +97,7 @@ def test_janice_failures_become_flagged_zero_value_lines():
     assert failure_line.type_id is None
     assert failure_line.is_flagged is True
     assert failure_line.flag_reason == "Could not be parsed"
+    assert failure_line.price_source == NO_SOURCE_LABEL
     assert failure_line.line_total == Decimal("0.00")
 
 

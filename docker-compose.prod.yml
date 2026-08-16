@@ -1,0 +1,25 @@
+# Production override for docker-compose.yml.
+#
+# The base file is the development setup (runserver + live bind-mounted
+# source) and stays that way. This file layers on top of it to run the
+# image as it will actually ship: Gunicorn serving the code baked into the
+# image (no bind mount), DEBUG off, and Postgres never published to the host.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+services:
+  web:
+    # Drop the base file's source bind-mount so the container runs the code
+    # that was COPY'd into the image at build time, not the host checkout.
+    # An empty list (rather than omitting the key) is required to override
+    # the base file's `volumes: - .:/app` instead of merging with it.
+    volumes: !reset []
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3
+    environment:
+      DJANGO_DEBUG: "0"
+
+  db:
+    # No `ports:` mapping here (the base file doesn't publish one either):
+    # Postgres stays reachable only from other containers on the compose
+    # network, never from the host or the public internet.
+    ports: !reset []

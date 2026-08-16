@@ -14,4 +14,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# Populates STATIC_ROOT inside the image so WhiteNoise has something to serve
+# once the container runs with DEBUG=0 (Gunicorn), where Django no longer
+# serves static files itself the way it does under `runserver` + DEBUG=1.
+# Safe at build time: settings.py has defaults for DJANGO_SECRET_KEY and the
+# DB settings, and collectstatic never opens a database connection.
+RUN python manage.py collectstatic --noinput
+
 CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000"]

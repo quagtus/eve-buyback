@@ -202,3 +202,22 @@ def test_invalid_pricing_basis_raises_appraisal_error_not_key_error():
 
     with pytest.raises(AppraisalError):
         gateway.create_appraisal("Raven 2")
+
+
+@responses.activate
+def test_payload_that_is_a_json_list_raises_appraisal_error_not_attribute_error():
+    # A 200 with an unexpected top-level shape must not escape as a raw
+    # AttributeError ('list' object has no attribute 'get').
+    responses.add(responses.POST, APPRAISAL_URL, json=["not", "a", "dict"], status=200)
+
+    with pytest.raises(AppraisalError):
+        build_gateway().create_appraisal("Raven 2")
+
+
+@responses.activate
+def test_items_containing_a_non_dict_entry_raises_appraisal_error_not_attribute_error():
+    payload = {**SAMPLE_RESPONSE, "items": ["not-a-dict"]}
+    responses.add(responses.POST, APPRAISAL_URL, json=payload, status=200)
+
+    with pytest.raises(AppraisalError):
+        build_gateway().create_appraisal("Raven 2")

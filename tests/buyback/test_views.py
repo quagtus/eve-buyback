@@ -141,6 +141,35 @@ def test_htmx_submit_returns_hx_redirect_header_instead_of_302(
 
 
 @pytest.mark.django_db
+def test_duplicate_snapshot_code_renders_error_partial_instead_of_500(
+    client, monkeypatch, settings
+):
+    settings.BUYBACK_RATE_LIMIT = "1000/h"
+
+    class StubGateway:
+        def create_appraisal(self, raw_text):
+            return AppraisalResult(
+                code="dupecode",
+                items=(
+                    AppraisalItem(
+                        type_id=638, name="Raven", quantity=1, unit_price=Decimal("10.00")
+                    ),
+                ),
+                failures=(),
+            )
+
+    monkeypatch.setattr("buyback.views.build_default_gateway", lambda: StubGateway())
+
+    first = client.post(reverse("buyback:submit"), {"raw_text": "Raven\t1"})
+    assert first.status_code == 302
+
+    second = client.post(reverse("buyback:submit"), {"raw_text": "Raven\t1"})
+    assert second.status_code == 200
+    assert b"already exists" in second.content
+    assert Snapshot.objects.filter(pk="dupecode").count() == 1
+
+
+@pytest.mark.django_db
 def test_non_htmx_submit_still_returns_a_plain_302(client, monkeypatch, settings):
     settings.BUYBACK_RATE_LIMIT = "1000/h"
 

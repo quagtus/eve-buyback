@@ -1,7 +1,7 @@
 """Application layer: orchestrates gateway, rules, and persistence."""
 
 from django.conf import settings
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from buyback.domain.gateway import PriceAppraisalGateway
@@ -16,6 +16,10 @@ from siteconfig.models import SiteConfig
 
 class EmptyAppraisalError(RuntimeError):
     """Nothing in the paste could be priced, so there is nothing to snapshot."""
+
+
+class DuplicateSnapshotError(RuntimeError):
+    """A snapshot with this Janice code already exists."""
 
 
 def build_default_gateway(config: SiteConfig | None = None) -> JaniceAppraisalGateway:
@@ -57,28 +61,39 @@ def generate_snapshot(
     classifications = _classifications({item.type_id for item in appraisal.items})
     quote = build_quote(appraisal, ruleset, classifications, timezone.now())
 
-    with transaction.atomic():
-        snapshot = Snapshot.objects.create(
-            code=quote.code,
-            total_value=quote.total_value,
-            contract_to=config.contract_to,
-            contract_instructions=config.contract_instructions,
-        )
-        SnapshotItem.objects.bulk_create(
-            [
-                SnapshotItem(
-                    snapshot=snapshot,
-                    type_id=line.type_id,
-                    type_name=line.type_name,
-                    quantity=line.quantity,
-                    unit_price=line.unit_price,
-                    percent_applied=line.percent_applied,
-                    price_source=line.price_source,
-                    line_total=line.line_total,
-                    is_flagged=line.is_flagged,
-                    flag_reason=line.flag_reason,
-                )
-                for line in quote.lines
-            ]
-        )
+    # The IntegrityError must be caught OUTSIDE the atomic block: Django
+    # marks an atomic block's transaction as broken the instant an exception
+    # escapes it, so catching inside and continuing to use the same
+    # transaction would raise TransactionManagementError instead. Letting it
+    # propagate past the `with` first, then catching it here, closes the
+    # broken transaction cleanly before we raise the domain-level error.
+    try:
+        with transaction.atomic():
+            snapshot = Snapshot.objects.create(
+                code=quote.code,
+                total_value=quote.total_value,
+                contract_to=config.contract_to,
+                contract_instructions=config.contract_instructions,
+            )
+            SnapshotItem.objects.bulk_create(
+                [
+                    SnapshotItem(
+                        snapshot=snapshot,
+                        type_id=line.type_id,
+                        type_name=line.type_name,
+                        quantity=line.quantity,
+                        unit_price=line.unit_price,
+                        percent_applied=line.percent_applied,
+                        price_source=line.price_source,
+                        line_total=line.line_total,
+                        is_flagged=line.is_flagged,
+                        flag_reason=line.flag_reason,
+                    )
+                    for line in quote.lines
+                ]
+            )
+    except IntegrityError as exc:
+        raise DuplicateSnapshotError(
+            f"A snapshot with code {quote.code!r} already exists."
+        ) from exc
     return snapshot

@@ -5,7 +5,11 @@ import pytest
 from buyback.domain.appraisal import AppraisalItem, AppraisalResult
 from buyback.domain.gateway import AppraisalError
 from buyback.models import Snapshot
-from buyback.services import EmptyAppraisalError, generate_snapshot
+from buyback.services import (
+    DuplicateSnapshotError,
+    EmptyAppraisalError,
+    generate_snapshot,
+)
 from catalog.models import EveCategory, EveGroup, EveType
 from pricing.models import BlacklistEntry, CategoryDefaultPercent, CustomRule
 from siteconfig.models import SiteConfig
@@ -138,6 +142,34 @@ def test_gateway_failure_persists_nothing(configured):
         generate_snapshot("Raven\t1", gateway)
 
     assert Snapshot.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_duplicate_janice_code_raises_duplicate_snapshot_error_and_keeps_one_row(
+    configured,
+):
+    def stub():
+        return StubGateway(
+            AppraisalResult(
+                code="dupe123",
+                items=(
+                    AppraisalItem(
+                        type_id=638,
+                        name="Raven",
+                        quantity=1,
+                        unit_price=Decimal("100.00"),
+                    ),
+                ),
+                failures=(),
+            )
+        )
+
+    generate_snapshot("Raven\t1", stub())
+
+    with pytest.raises(DuplicateSnapshotError):
+        generate_snapshot("Raven\t1", stub())
+
+    assert Snapshot.objects.count() == 1
 
 
 @pytest.mark.django_db
