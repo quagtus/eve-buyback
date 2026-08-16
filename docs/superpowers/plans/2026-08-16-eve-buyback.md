@@ -366,12 +366,30 @@ docker compose exec web pytest tests/test_smoke.py -v
 ```
 Expected: PASS.
 
-- [ ] **Step 12: Commit**
+- [ ] **Step 12: Create `.gitignore`, then commit**
+
+Step 11 creates a real `.env`, and Task 12 Step 5 puts a live `JANICE_API_KEY` in it.
+Without this file the `git add .` below would commit that credential.
+
+```
+.env
+__pycache__/
+*.pyc
+.pytest_cache/
+staticfiles/
+```
 
 ```bash
 git add .
 git commit -m "Scaffold Django project, Docker Compose, and test harness"
 ```
+
+Verify the credential file is not tracked:
+
+```bash
+git ls-files | grep -E '(^|/)\.env$' && echo "LEAK" || echo "ok: .env untracked"
+```
+Expected: `ok: .env untracked`
 
 ---
 
