@@ -93,3 +93,31 @@ CACHES = {
 }
 
 RATELIMIT_ENABLE = os.environ.get("RATELIMIT_ENABLE", "1") == "1"
+
+UNFOLD = {
+    "SITE_TITLE": "EVE Buyback Admin",
+    "SITE_HEADER": "EVE Buyback",
+    "SIDEBAR": {
+        "show_search": True,
+        "navigation": [
+            {
+                "title": "Pricing",
+                "items": [
+                    {"title": "Category defaults",
+                     "link": "/admin/pricing/categorydefaultpercent/"},
+                    {"title": "Custom rules", "link": "/admin/pricing/customrule/"},
+                    {"title": "Sales", "link": "/admin/pricing/salerule/"},
+                    {"title": "Blacklist", "link": "/admin/pricing/blacklistentry/"},
+                    {"title": "Rule summary", "link": "/admin/pricing/summary/"},
+                ],
+            },
+            {
+                "title": "Buyback",
+                "items": [
+                    {"title": "Quotes", "link": "/admin/buyback/snapshot/"},
+                    {"title": "Settings", "link": "/admin/siteconfig/siteconfig/"},
+                ],
+            },
+        ],
+    },
+}
