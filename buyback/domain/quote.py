@@ -11,16 +11,13 @@ from typing import Mapping
 
 from buyback.domain.appraisal import AppraisalResult
 from buyback.domain.money import line_total, sum_totals
+from pricing.domain.decisions import FlagReason, PriceSourceKind
 from pricing.domain.resolution import resolve_price
 from pricing.domain.ruleset import ItemClassification, RuleSet
 
-ZERO_ISK = Decimal("0.00")
+__all__ = ["FlagReason", "Quote", "QuoteLine", "build_quote"]
 
-# Shown in the "Source" column for lines that never reached rule resolution
-# (unrecognized items, unparseable paste lines). The flag_reason column
-# already explains why, so this is deliberately a plain placeholder rather
-# than a raw enum value like "none" leaking to the seller.
-NO_SOURCE_LABEL = "—"
+ZERO_ISK = Decimal("0.00")
 
 # Mirrors SnapshotItem.type_name's column width (CharField(max_length=255)).
 # Failure text and item names are upstream/user-echoed data we don't control,
@@ -35,10 +32,11 @@ class QuoteLine:
     quantity: int
     unit_price: Decimal
     percent_applied: Decimal
-    price_source: str
+    price_source_kind: str
+    price_source_label: str
     line_total: Decimal
     is_flagged: bool
-    flag_reason: str | None
+    flag_reason: FlagReason | None
 
 
 @dataclass(frozen=True)
@@ -66,10 +64,11 @@ def build_quote(
                     quantity=item.quantity,
                     unit_price=item.unit_price,
                     percent_applied=Decimal("0"),
-                    price_source=NO_SOURCE_LABEL,
+                    price_source_kind=PriceSourceKind.NONE.value,
+                    price_source_label="",
                     line_total=ZERO_ISK,
                     is_flagged=True,
-                    flag_reason="Unrecognized item",
+                    flag_reason=FlagReason.UNRECOGNIZED,
                 )
             )
             continue
@@ -87,7 +86,8 @@ def build_quote(
                 quantity=item.quantity,
                 unit_price=item.unit_price,
                 percent_applied=decision.percent,
-                price_source=decision.source_label,
+                price_source_kind=decision.source_kind.value,
+                price_source_label=decision.rule_name,
                 line_total=total,
                 is_flagged=decision.flagged,
                 flag_reason=decision.flag_reason,
@@ -102,10 +102,11 @@ def build_quote(
                 quantity=0,
                 unit_price=ZERO_ISK,
                 percent_applied=Decimal("0"),
-                price_source=NO_SOURCE_LABEL,
+                price_source_kind=PriceSourceKind.NONE.value,
+                price_source_label="",
                 line_total=ZERO_ISK,
                 is_flagged=True,
-                flag_reason="Could not be parsed",
+                flag_reason=FlagReason.UNPARSEABLE,
             )
         )
 

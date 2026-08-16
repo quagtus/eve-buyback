@@ -21,15 +21,30 @@ class MatchLevel(IntEnum):
     TYPE = 3
 
 
+class FlagReason(StrEnum):
+    """Why a line was rejected. A stable key — never displayed raw."""
+
+    BLACKLISTED = "BLACKLISTED"
+    NO_RULE = "NO_RULE"
+    UNRECOGNIZED = "UNRECOGNIZED"
+    UNPARSEABLE = "UNPARSEABLE"
+
+
 @dataclass(frozen=True)
 class PriceDecision:
     """The outcome of resolving one item against the rule set.
 
     `percent` is in percentage points: Decimal("80.00") means 80%.
+
+    `source_kind` is a machine key for the *category* of rule that won.
+    `rule_name` is the admin-authored name of the winning rule, and is
+    empty for system sources. The two are separate because they need
+    opposite treatment at render time: the kind is translated, the
+    rule name never is — it is the operator's data, not UI text.
     """
 
     percent: Decimal
     source_kind: PriceSourceKind
-    source_label: str
+    rule_name: str = ""
     flagged: bool = False
-    flag_reason: str | None = None
+    flag_reason: "FlagReason | None" = None

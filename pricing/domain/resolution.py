@@ -15,7 +15,7 @@ wins" means.
 from datetime import datetime
 from decimal import Decimal
 
-from pricing.domain.decisions import PriceDecision, PriceSourceKind
+from pricing.domain.decisions import FlagReason, PriceDecision, PriceSourceKind
 from pricing.domain.ruleset import ItemClassification, Rule, RuleSet
 
 ZERO = Decimal("0")
@@ -63,9 +63,9 @@ def resolve_price(
         return PriceDecision(
             percent=ZERO,
             source_kind=PriceSourceKind.BLACKLIST,
-            source_label="Blacklisted",
+            rule_name="",
             flagged=True,
-            flag_reason="Blacklisted",
+            flag_reason=FlagReason.BLACKLISTED,
         )
 
     active_sales = tuple(rule for rule in ruleset.sales if rule.is_active(now))
@@ -74,7 +74,7 @@ def resolve_price(
         return PriceDecision(
             percent=sale.percent,
             source_kind=PriceSourceKind.SALE,
-            source_label=sale.label,
+            rule_name=sale.label,
         )
 
     custom = _best_match(ruleset.custom_rules, item)
@@ -82,7 +82,7 @@ def resolve_price(
         return PriceDecision(
             percent=custom.percent,
             source_kind=PriceSourceKind.CUSTOM,
-            source_label=custom.label,
+            rule_name=custom.label,
         )
 
     default = ruleset.category_defaults.get(item.category_id)
@@ -90,13 +90,13 @@ def resolve_price(
         return PriceDecision(
             percent=default,
             source_kind=PriceSourceKind.CATEGORY_DEFAULT,
-            source_label="Category default",
+            rule_name="",
         )
 
     return PriceDecision(
         percent=ZERO,
         source_kind=PriceSourceKind.NONE,
-        source_label="No rule configured",
+        rule_name="",
         flagged=True,
-        flag_reason="No rule configured",
+        flag_reason=FlagReason.NO_RULE,
     )

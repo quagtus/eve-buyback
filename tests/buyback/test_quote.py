@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from buyback.domain.appraisal import AppraisalItem, AppraisalResult
-from buyback.domain.quote import MAX_TYPE_NAME_LENGTH, NO_SOURCE_LABEL, build_quote
+from buyback.domain.quote import FlagReason, MAX_TYPE_NAME_LENGTH, build_quote
 from pricing.domain.ruleset import ItemClassification, Rule, RuleSet
 
 NOW = datetime(2026, 8, 16, 12, 0, tzinfo=timezone.utc)
@@ -52,7 +52,7 @@ def test_blacklisted_line_is_flagged_and_contributes_nothing():
 
     rifter = quote.lines[1]
     assert rifter.is_flagged is True
-    assert rifter.flag_reason == "Blacklisted"
+    assert rifter.flag_reason == FlagReason.BLACKLISTED
     assert rifter.line_total == Decimal("0.00")
     assert quote.total_value == Decimal("70.00")
 
@@ -65,10 +65,7 @@ def test_item_missing_from_catalog_is_flagged_not_crashed():
     quote = build_quote(result, RULESET, CLASSIFICATIONS, NOW)
 
     assert quote.lines[0].is_flagged is True
-    assert quote.lines[0].flag_reason == "Unrecognized item"
-    # A raw enum value like "none" must never reach the seller-facing Source
-    # column; the flag_reason already explains why there's no source.
-    assert quote.lines[0].price_source == NO_SOURCE_LABEL
+    assert quote.lines[0].flag_reason == FlagReason.UNRECOGNIZED
     assert quote.total_value == Decimal("0.00")
 
 
@@ -80,7 +77,7 @@ def test_category_without_default_is_flagged():
     quote = build_quote(result, RULESET, CLASSIFICATIONS, NOW)
 
     assert quote.lines[0].is_flagged is True
-    assert quote.lines[0].flag_reason == "No rule configured"
+    assert quote.lines[0].flag_reason == FlagReason.NO_RULE
 
 
 def test_janice_failures_become_flagged_zero_value_lines():
@@ -96,8 +93,7 @@ def test_janice_failures_become_flagged_zero_value_lines():
     assert failure_line.type_name == "definitely not an item"
     assert failure_line.type_id is None
     assert failure_line.is_flagged is True
-    assert failure_line.flag_reason == "Could not be parsed"
-    assert failure_line.price_source == NO_SOURCE_LABEL
+    assert failure_line.flag_reason == FlagReason.UNPARSEABLE
     assert failure_line.line_total == Decimal("0.00")
 
 
@@ -136,3 +132,22 @@ def test_total_equals_the_sum_of_displayed_lines():
     quote = build_quote(result, RULESET, CLASSIFICATIONS, NOW)
 
     assert quote.total_value == sum(line.line_total for line in quote.lines)
+
+
+def test_unrecognized_item_emits_key_not_english():
+    result = appraisal(
+        [AppraisalItem(type_id=99999, name="Mystery", quantity=1, unit_price=Decimal("10.00"))]
+    )
+
+    quote = build_quote(result, RULESET, CLASSIFICATIONS, NOW)
+
+    assert quote.lines[0].flag_reason == FlagReason.UNRECOGNIZED
+    assert quote.lines[0].flag_reason != "Unrecognized item"
+
+
+def test_unparseable_line_emits_key_not_english():
+    result = appraisal([], failures=["junk"])
+
+    quote = build_quote(result, RULESET, CLASSIFICATIONS, NOW)
+
+    assert quote.lines[0].flag_reason == FlagReason.UNPARSEABLE

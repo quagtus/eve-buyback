@@ -3,7 +3,7 @@ from decimal import Decimal
 
 import pytest
 
-from pricing.domain.decisions import PriceSourceKind
+from pricing.domain.decisions import FlagReason, PriceSourceKind
 from pricing.domain.resolution import resolve_price
 from pricing.domain.ruleset import ItemClassification, Rule, RuleSet
 
@@ -55,7 +55,7 @@ def test_type_rule_wins_when_no_sale_active():
 
     assert decision.percent == Decimal("96.00")
     assert decision.source_kind is PriceSourceKind.CUSTOM
-    assert decision.source_label == "Raven Special"
+    assert decision.rule_name == "Raven Special"
     assert decision.flagged is False
 
 
@@ -97,7 +97,7 @@ def test_blacklist_beats_active_sale():
     assert decision.percent == Decimal("0")
     assert decision.source_kind is PriceSourceKind.BLACKLIST
     assert decision.flagged is True
-    assert decision.flag_reason == "Blacklisted"
+    assert decision.flag_reason == FlagReason.BLACKLISTED
 
 
 def test_missing_category_default_is_flagged_not_an_error():
@@ -106,7 +106,7 @@ def test_missing_category_default_is_flagged_not_an_error():
     assert decision.percent == Decimal("0")
     assert decision.source_kind is PriceSourceKind.NONE
     assert decision.flagged is True
-    assert decision.flag_reason == "No rule configured"
+    assert decision.flag_reason == FlagReason.NO_RULE
 
 
 def test_most_specific_sale_wins_within_the_sale_tier():
@@ -120,7 +120,7 @@ def test_most_specific_sale_wins_within_the_sale_tier():
     decision = resolve_price(RAVEN, build_ruleset(sales=(SUMMER_SALE, type_sale)), NOW)
 
     assert decision.percent == Decimal("99.00")
-    assert decision.source_label == "Raven Weekend"
+    assert decision.rule_name == "Raven Weekend"
 
 
 @pytest.mark.parametrize(
@@ -144,7 +144,7 @@ def test_custom_rule_tie_break_prefers_higher_percent_first_order():
     decision = resolve_price(RAVEN, ruleset, NOW)
 
     assert decision.percent == Decimal("85.00")
-    assert decision.source_label == "High"
+    assert decision.rule_name == "High"
 
 
 def test_custom_rule_tie_break_prefers_higher_percent_second_order():
@@ -157,7 +157,7 @@ def test_custom_rule_tie_break_prefers_higher_percent_second_order():
     decision = resolve_price(RAVEN, ruleset, NOW)
 
     assert decision.percent == Decimal("85.00")
-    assert decision.source_label == "High"
+    assert decision.rule_name == "High"
 
 
 def test_sale_tie_break_prefers_higher_percent_first_order():
@@ -183,7 +183,7 @@ def test_sale_tie_break_prefers_higher_percent_first_order():
     decision = resolve_price(RAVEN, build_ruleset(sales=(sale_85, sale_99)), NOW)
 
     assert decision.percent == Decimal("99.00")
-    assert decision.source_label == "Sale 99"
+    assert decision.rule_name == "Sale 99"
 
 
 def test_sale_tie_break_prefers_higher_percent_second_order():
@@ -207,7 +207,7 @@ def test_sale_tie_break_prefers_higher_percent_second_order():
     decision = resolve_price(RAVEN, build_ruleset(sales=(sale_99, sale_85)), NOW)
 
     assert decision.percent == Decimal("99.00")
-    assert decision.source_label == "Sale 99"
+    assert decision.rule_name == "Sale 99"
 
 
 def test_specificity_still_beats_percent_across_levels():
@@ -227,4 +227,20 @@ def test_specificity_still_beats_percent_across_levels():
     for ruleset in (ruleset_a, ruleset_b):
         decision = resolve_price(RAVEN, ruleset, NOW)
         assert decision.percent == Decimal("10.00")
-        assert decision.source_label == "Type Rule"
+        assert decision.rule_name == "Type Rule"
+
+
+def test_blacklist_emits_kind_and_no_rule_name():
+    ruleset = build_ruleset(blacklist_type_ids=frozenset({587}))
+
+    decision = resolve_price(RIFTER, ruleset, NOW)
+
+    assert decision.source_kind is PriceSourceKind.BLACKLIST
+    assert decision.rule_name == ""
+
+
+def test_custom_rule_carries_its_name_untranslated():
+    decision = resolve_price(RAVEN, build_ruleset(), NOW)
+
+    assert decision.source_kind is PriceSourceKind.CUSTOM
+    assert decision.rule_name == "Raven Special"
