@@ -1,6 +1,8 @@
+import re
 from decimal import Decimal
 
 import pytest
+from django.test.utils import override_settings
 from django.urls import reverse
 
 from buyback.domain.appraisal import AppraisalItem, AppraisalResult
@@ -270,3 +272,51 @@ def test_contract_dialog_has_no_unresolved_placeholders(client):
     assert "288000000.00" in body, "total missing from 'I will receive'"
     assert "Jita IV - Moon 4" in body
     assert "(7 days)" in body
+
+
+@pytest.mark.django_db
+def test_contract_dialog_exposes_copyable_values(client):
+    """Every field the seller must retype into EVE has a copy target."""
+    quote = Quote.objects.create(
+        code="COPY001",
+        total_value=Decimal("288000000.00"),
+        contract_to="Buyback Corp",
+        contract_station="Jita IV - Moon 4",
+        contract_days=3,
+    )
+
+    body = client.get(reverse("buyback:quote", args=[quote.pk])).content.decode()
+    targets = re.findall(r'data-copy="([^"]*)"', body)
+
+    assert "COPY001" in targets
+    assert "Buyback Corp" in targets
+    assert "Jita IV - Moon 4" in targets
+    assert "288000000.00" in targets
+
+
+@pytest.mark.django_db
+def test_copied_isk_is_unformatted_in_every_locale(client):
+    """EVE rejects a comma decimal separator.
+
+    The displayed amount is localised for readability, but the clipboard value
+    must stay machine-form. Under a locale like eo, Django renders Decimals as
+    '288000000,00' — pasting that into the client would fail.
+    """
+    quote = Quote.objects.create(
+        code="COPY002",
+        total_value=Decimal("288000000.00"),
+        contract_to="Buyback Corp",
+        contract_days=3,
+    )
+    url = reverse("buyback:quote", args=[quote.pk])
+
+    with override_settings(LANGUAGES=[("en", "English"), ("eo", "Esperanto")]):
+        client.cookies["django_language"] = "eo"
+        body = client.get(url).content.decode()
+
+    targets = re.findall(r'data-copy="([^"]*)"', body)
+
+    assert "288000000.00" in targets, f"clipboard value was localised: {targets}"
+    assert "288000000,00" not in targets
+    # The visible text may still be localised — that part is intentional.
+    assert "288000000,00" in body
