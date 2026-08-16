@@ -164,3 +164,42 @@ def test_each_theme_block_binds_the_expected_token_values(selector, theme, label
         assert _matches(actual, expected.lower()), (
             f"{label}: --{token} is {actual} in {selector}, expected {expected}"
         )
+
+
+def test_admin_primary_keeps_white_text_legible():
+    """Unfold paints white text on primary-600.
+
+    EVE's raw amber #fca311 gives white-on-fill 2.02 and fails badly. The admin
+    scale must anchor darker than the site's accent for this reason alone.
+    """
+    from django.conf import settings
+
+    primary = settings.UNFOLD["COLORS"]["primary"]
+    red, green, blue = (int(part) for part in primary["600"].split())
+    fill = f"#{red:02x}{green:02x}{blue:02x}"
+
+    ratio = contrast_ratio("#ffffff", fill)
+
+    assert ratio >= AA_NORMAL, (
+        f"white on admin primary-600 ({fill}) is {ratio:.2f}; "
+        f"anchor the scale darker"
+    )
+
+
+def test_admin_scale_has_every_shade_unfold_requires():
+    from django.conf import settings
+
+    primary = settings.UNFOLD["COLORS"]["primary"]
+    expected = {"50", "100", "200", "300", "400", "500", "600", "700", "800", "900", "950"}
+
+    assert set(primary) == expected
+
+
+def test_admin_scale_uses_unfolds_space_separated_rgb_format():
+    """Not hex, not comma-separated — Unfold parses 'R G B'."""
+    from django.conf import settings
+
+    for shade, value in settings.UNFOLD["COLORS"]["primary"].items():
+        parts = value.split()
+        assert len(parts) == 3, f"shade {shade} is {value!r}, expected 'R G B'"
+        assert all(part.isdigit() and 0 <= int(part) <= 255 for part in parts)
