@@ -33,7 +33,7 @@ class SnapshotAdmin(ModelAdmin):
 
     @admin.display(description="Public page")
     def public_link(self, obj):
-        return format_html('<a href="/quote/{}/" target="_blank">open</a>', obj.code)
+        return format_html('<a href="/q/{}/" target="_blank">open</a>', obj.code)
 
     def has_add_permission(self, request):
         return False

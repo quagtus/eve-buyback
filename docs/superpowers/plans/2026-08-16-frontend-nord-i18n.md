@@ -1194,7 +1194,7 @@ def test_eve_item_names_are_never_translated_on_the_quote_page():
     ):
         client = Client()
         client.cookies["django_language"] = "eo"
-        body = client.get("/quote/I18NTEST/").content.decode()
+        body = client.get("/q/I18NTEST/").content.decode()
 
     # EVE data and the operator's rule name survive verbatim...
     assert "Raven" in body
@@ -1669,7 +1669,7 @@ SnapshotItem.objects.create(snapshot=s, type_id=587, type_name='Rifter', quantit
     line_total=Decimal('0.00'), is_flagged=True, flag_reason_code='BLACKLISTED')
 with override_settings(ALLOWED_HOSTS=['testserver']):
     c = Client(); c.cookies['django_language'] = 'eo'
-    body = c.get('/quote/E2E18N/').content.decode()
+    body = c.get('/q/E2E18N/').content.decode()
 print('EVE name verbatim      :', 'Raven' in body)
 print('rule name verbatim     :', 'Raven Special' in body)
 print('system label translated:', 'Malpermesita' in body)

@@ -3287,7 +3287,7 @@ app_name = "buyback"
 urlpatterns = [
     path("", views.form, name="form"),
     path("submit/", views.submit, name="submit"),
-    path("quote/<str:code>/", views.snapshot, name="snapshot"),
+    path("q/<str:code>/", views.snapshot, name="snapshot"),
 ]
 ```
 
@@ -3803,7 +3803,7 @@ class SnapshotAdmin(ModelAdmin):
 
     @admin.display(description="Public page")
     def public_link(self, obj):
-        return format_html('<a href="/quote/{}/" target="_blank">open</a>', obj.code)
+        return format_html('<a href="/q/{}/" target="_blank">open</a>', obj.code)
 
     def has_add_permission(self, request):
         return False
@@ -4257,7 +4257,7 @@ definitely-not-an-item	1
 ```
 
 Expected on the resulting page:
-- Redirected to `/quote/<code>/` with a Janice-style code.
+- Redirected to `/q/<code>/` with a Janice-style code.
 - Raven priced at 96% (Raven Special).
 - Rifter red-boxed, 0.00, reason "Blacklisted".
 - Tritanium red-boxed with "No rule configured" (no Material default was set).
@@ -4267,7 +4267,7 @@ Expected on the resulting page:
 
 - [ ] **Step 5: Prove the snapshot is frozen**
 
-Change "Raven Special" to 10% in the admin, then reload the same `/quote/<code>/` URL.
+Change "Raven Special" to 10% in the admin, then reload the same `/q/<code>/` URL.
 Expected: the page is completely unchanged — same percent, same source label, same total.
 
 - [ ] **Step 6: Confirm the quote appears in admin history**

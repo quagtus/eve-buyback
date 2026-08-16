@@ -76,7 +76,7 @@ def test_eve_item_names_are_never_translated_on_the_quote_page():
     ):
         client = Client()
         client.cookies["django_language"] = "eo"
-        body = client.get("/quote/I18NTEST/").content.decode()
+        body = client.get("/q/I18NTEST/").content.decode()
 
     # EVE data and the operator's rule name survive verbatim...
     assert "Raven" in body
