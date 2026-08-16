@@ -1733,5 +1733,49 @@ No spec requirement is unimplemented.
 
 **Type consistency:** `PriceDecision(percent, source_kind, rule_name, flagged, flag_reason)` is defined in Task 2 Step 3 and constructed in Step 4, consumed in Task 2 Step 6. `QuoteLine(..., price_source_kind, price_source_label, ..., flag_reason)` is defined in Task 2 Step 6 and consumed by `buyback/services.py` in Task 3 Step 7 and the filter in Task 4. `SnapshotItem.price_source_kind` / `.price_source_label` / `.flag_reason_code` are defined in Task 3 Step 3 and used identically in Tasks 4, 6, 7, and 9. `FlagReason` is defined once in `pricing/domain/decisions.py` and re-exported from `buyback/domain/quote.py` (Task 2 Step 5) so tests importing it from either location work.
 
+---
+
+## Errata — defects in this plan, found during implementation
+
+Recorded so the plan is not trusted blindly on a re-run. All are fixed in the codebase.
+
+1. **`STATICFILES_DIRS` was never set, so the stylesheet 404'd.** Task 1 compiles Tailwind to
+   `static/css/app.css`, which is neither an app's `static/` directory nor inside `STATIC_ROOT`.
+   Django therefore never saw it: `findstatic` reported "No matching file found",
+   `GET /static/css/app.css` returned **404**, and `collectstatic` silently omitted it from the
+   production image. The entire restyle was invisible in dev and production while the whole
+   suite stayed green — because every other test asserts on HTML, never on whether the
+   stylesheet resolves. Fixed by adding `STATICFILES_DIRS = [BASE_DIR / "static"]`, plus
+   `tests/test_static_assets.py` as a regression guard (verified load-bearing: it fails when
+   `STATICFILES_DIRS` is emptied).
+
+2. **Tailwind v4 auto-scans the project root, so `docs/*.md` leaked into the CSS.** This plan
+   and its spec contain the full template markup, and Tailwind compiled every class mentioned
+   in them into the shipped stylesheet (16.4 KB instead of 5.7 KB). Fixed with
+   `@import "tailwindcss" source(none);` so only the three declared `@source` directories are
+   scanned.
+
+3. **The `@source` probes in Task 1 Step 6 and Task 7 Step 5 tested nothing.** They probed with
+   `bg-surface`, but Tailwind v4 emits utilities for `@theme`-declared colours *unconditionally* —
+   their presence is independent of whether any template was scanned. Both steps now probe with
+   ordinary utilities (`tabular-nums`, `overflow-x-auto`) and add an explicit docs-leak check.
+
+4. **`PriceSourceKind` values were lowercase while everything reading them used uppercase.**
+   The Task 3 backfill writes `"BLACKLIST"` and the Task 4 filter looks up `"BLACKLIST"`, but the
+   enum's values were `"blacklist"`. Every *newly generated* quote would have rendered a blank
+   Source column while backfilled rows looked correct — a silent divergence between old and new
+   data. Fixed by making the enum values uppercase, since they are persisted keys.
+
+5. **Task 6's boundary test depended on Task 7's template wiring.** `test_eve_item_names_are_never_
+   translated_on_the_quote_page` asserts against the rendered quote page, but `snapshot.html` does
+   not route through the label filters until Task 7. Task 6 cannot pass on its own. Handled with a
+   `strict=True` xfail during Task 6, removed in Task 7 — but the ordering is a genuine flaw: the
+   test belongs in Task 7, or the template wiring belongs in Task 6.
+
+6. **`gettext` was missing from the image.** Task 6 needs `compilemessages`. Folded into Task 1's
+   `Dockerfile` apt line rather than discovered mid-plan.
+
+---
+
 **Known follow-ups, out of scope:**
 - HTMX swapping `body` with `outerHTML` on language change re-runs the pre-paint script; the theme is re-read from `localStorage`, so it stays stable. Worth re-verifying if the swap target changes.

@@ -79,6 +79,13 @@ LOCALE_PATHS = [BASE_DIR / "locale"]
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# Tailwind compiles to static/css/app.css, which is neither an app's static/
+# directory nor inside STATIC_ROOT, so Django cannot see it without this.
+# Without it {% static 'css/app.css' %} resolves to a URL that 404s and
+# collectstatic silently omits the file — the whole site renders unstyled
+# while every test still passes, because tests assert on HTML, not CSS.
+STATICFILES_DIRS = [BASE_DIR / "static"]
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Janice integration
