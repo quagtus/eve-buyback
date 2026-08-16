@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-16 17:27+0000\n"
+"POT-Creation-Date: 2026-08-16 17:45+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,6 +17,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
 #: buyback/templates/buyback/form.html:6
 msgid ""
 "Paste your items below (copy from your in-game inventory) to get a buyback "
@@ -41,56 +42,132 @@ msgid "Accepted contracts go to <strong>%(corp)s</strong>."
 msgstr ""
 
 #: buyback/templates/buyback/quote.html:4
-#: buyback/templates/buyback/quote.html:79
+#: buyback/templates/buyback/quote.html:8
 #, python-format
 msgid "Quote %(code)s"
 msgstr ""
 
-#: buyback/templates/buyback/quote.html:83
+#: buyback/templates/buyback/quote.html:12
 #, python-format
 msgid "Generated %(created)s. This page is permanent and will not change."
 msgstr ""
 
-#: buyback/templates/buyback/quote.html:91
+#: buyback/templates/buyback/quote.html:20
 msgid "Item"
 msgstr ""
 
-#: buyback/templates/buyback/quote.html:92
+#: buyback/templates/buyback/quote.html:21
 msgid "Qty"
 msgstr ""
 
-#: buyback/templates/buyback/quote.html:93
+#: buyback/templates/buyback/quote.html:22
 msgid "Unit price"
 msgstr ""
 
-#: buyback/templates/buyback/quote.html:94
+#: buyback/templates/buyback/quote.html:23
 msgid "Rate"
 msgstr ""
 
-#: buyback/templates/buyback/quote.html:95
+#: buyback/templates/buyback/quote.html:24
 msgid "Source"
 msgstr ""
 
-#: buyback/templates/buyback/quote.html:96
+#: buyback/templates/buyback/quote.html:25
 msgid "Total"
 msgstr ""
 
-#: buyback/templates/buyback/quote.html:120
+#: buyback/templates/buyback/quote.html:49
 #, python-format
 msgid "Total offer: %(total)s ISK"
 msgstr ""
 
-#: buyback/templates/buyback/quote.html:125
+#: buyback/templates/buyback/quote.html:53
 msgid "How to sell"
 msgstr ""
 
-#: buyback/templates/buyback/quote.html:127
+#: buyback/templates/buyback/quote.html:55
+msgid "Create an in-game contract matching the values below."
+msgstr ""
+
+#: buyback/templates/buyback/quote.html:70
+msgid "Create Contract"
+msgstr ""
+
+#: buyback/templates/buyback/quote.html:78
+msgid "Confirm (4/4)"
+msgstr ""
+
+#: buyback/templates/buyback/quote.html:81
+msgid "Contract Type"
+msgstr ""
+
+#: buyback/templates/buyback/quote.html:82
+msgid "Item Exchange"
+msgstr ""
+
+#: buyback/templates/buyback/quote.html:84
+msgid "Description"
+msgstr ""
+
+#: buyback/templates/buyback/quote.html:87
+msgid "Availability"
+msgstr ""
+
+#: buyback/templates/buyback/quote.html:89
+msgid "Private"
+msgstr ""
+
+#: buyback/templates/buyback/quote.html:94
+msgid "Location"
+msgstr ""
+
+#: buyback/templates/buyback/quote.html:98
+msgid "Expiration"
+msgstr ""
+
+#: buyback/templates/buyback/quote.html:101
 #, python-format
-msgid "Create an in-game contract to <strong>%(corp)s</strong>."
+msgid "(%(days)s day)"
+msgid_plural "(%(days)s days)"
+msgstr[0] ""
+msgstr[1] ""
+
+#: buyback/templates/buyback/quote.html:104
+msgid "Sales Tax"
+msgstr ""
+
+#: buyback/templates/buyback/quote.html:105
+msgid "(None)"
+msgstr ""
+
+#: buyback/templates/buyback/quote.html:107
+msgid "Broker's Fee"
+msgstr ""
+
+#: buyback/templates/buyback/quote.html:108
+#: buyback/templates/buyback/quote.html:111
+msgid "0 ISK"
+msgstr ""
+
+#: buyback/templates/buyback/quote.html:110
+msgid "Deposit"
+msgstr ""
+
+#: buyback/templates/buyback/quote.html:115
+msgid "I will receive"
+msgstr ""
+
+#: buyback/templates/buyback/quote.html:123
+msgid "Cancel"
+msgstr ""
+
+#: buyback/templates/buyback/quote.html:127
+msgid "Finish"
 msgstr ""
 
 #: buyback/templatetags/buyback_labels.py:17
 #: buyback/templatetags/buyback_labels.py:23
+#: tests/i18n/test_language_resolution.py:125
 msgid "Blacklisted"
 msgstr "Malpermesita"
 
@@ -110,10 +187,30 @@ msgstr ""
 msgid "Could not be parsed"
 msgstr ""
 
-#: templates/base.html:49
+#: buyback/views.py:64
+msgid "Too many quotes requested. Please try again later."
+msgstr ""
+
+#: buyback/views.py:69
+msgid "Paste your items before requesting a quote."
+msgstr ""
+
+#: buyback/views.py:74
+msgid "None of those lines could be priced."
+msgstr ""
+
+#: buyback/views.py:76
+msgid "That quote already exists. Please try again."
+msgstr ""
+
+#: buyback/views.py:79
+msgid "The price service is unavailable right now. Please try again."
+msgstr ""
+
+#: templates/base.html:53
 msgid "Language"
 msgstr ""
 
-#: templates/base.html:64
+#: templates/base.html:68
 msgid "Toggle colour theme"
 msgstr ""

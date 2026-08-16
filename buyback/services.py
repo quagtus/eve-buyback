@@ -74,6 +74,8 @@ def generate_quote(
                 total_value=quote_record.total_value,
                 contract_to=config.contract_to,
                 contract_instructions=config.contract_instructions,
+                contract_station=config.contract_station,
+                contract_days=config.contract_default_days,
             )
             QuoteItem.objects.bulk_create(
                 [

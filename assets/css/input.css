@@ -80,3 +80,14 @@ body {
   background-color: var(--surface);
   color: var(--text);
 }
+
+/* EVE client contract-dialog mockup shown on the quote page.
+   These deliberately do NOT use the Nord theme tokens: the panel replicates
+   the in-game client, which is always dark, so it stays dark in both site
+   themes rather than turning into a light card that no longer resembles EVE. */
+.eve-button-chamfer {
+  clip-path: polygon(0 0, 100% 0, 100% 65%, 85% 100%, 0 100%);
+}
+.eve-button-chamfer-border {
+  clip-path: polygon(0 0, 100% 0, 100% 68%, 87% 100%, 0 100%);
+}

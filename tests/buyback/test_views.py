@@ -212,3 +212,61 @@ def test_form_page_renders_without_a_site_logo(client):
 
     assert response.status_code == 200
     assert b"<img" not in response.content
+
+
+@pytest.mark.django_db
+def test_contract_dialog_renders_frozen_values_not_live_config(client):
+    """The dialog must never read live SiteConfig.
+
+    Regression: it used the CONTRACT_TO / CONTRACT_STATION context-processor
+    variables, so editing site config silently rewrote the contract terms shown
+    on every previously issued quote — on a page that states it is permanent.
+    """
+    from siteconfig.models import SiteConfig
+
+    config = SiteConfig.load()
+    config.contract_to = "Original Corp"
+    config.contract_station = "Original Station"
+    config.contract_default_days = 3
+    config.save()
+
+    quote = Quote.objects.create(
+        code="FROZEN1",
+        total_value=Decimal("100.00"),
+        contract_to=config.contract_to,
+        contract_station=config.contract_station,
+        contract_days=config.contract_default_days,
+    )
+
+    config.contract_to = "Changed Corp"
+    config.contract_station = "Changed Station"
+    config.contract_default_days = 99
+    config.save()
+
+    body = client.get(reverse("buyback:quote", args=[quote.pk])).content.decode()
+
+    assert "Original Corp" in body
+    assert "Original Station" in body
+    assert "Changed Corp" not in body
+    assert "Changed Station" not in body
+    assert "99 days" not in body
+
+
+@pytest.mark.django_db
+def test_contract_dialog_has_no_unresolved_placeholders(client):
+    """Every dialog field must render a real value."""
+    quote = Quote.objects.create(
+        code="FILLED1",
+        total_value=Decimal("288000000.00"),
+        contract_to="Buyback Corp",
+        contract_station="Jita IV - Moon 4",
+        contract_days=7,
+    )
+
+    body = client.get(reverse("buyback:quote", args=[quote.pk])).content.decode()
+
+    assert "[[date calculated]]" not in body, "literal placeholder still present"
+    assert "FILLED1" in body, "quote code missing from Description"
+    assert "288000000.00" in body, "total missing from 'I will receive'"
+    assert "Jita IV - Moon 4" in body
+    assert "(7 days)" in body

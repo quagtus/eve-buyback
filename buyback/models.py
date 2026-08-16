@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.db import models
 
 
@@ -17,6 +19,13 @@ class Quote(models.Model):
     total_value = models.DecimalField(max_digits=20, decimal_places=2)
     contract_to = models.CharField(max_length=255, blank=True)
     contract_instructions = models.TextField(blank=True)
+    # Frozen alongside contract_to for the same reason: the quote page tells the
+    # seller "this page is permanent and will not change", so every contract
+    # instruction on it must be the one that applied when the quote was made.
+    # Reading these live from SiteConfig would silently rewrite the terms of an
+    # old quote when the operator moves station or changes the contract window.
+    contract_station = models.CharField(max_length=255, blank=True)
+    contract_days = models.PositiveIntegerField(default=3)
 
     class Meta:
         ordering = ["-created_at"]
@@ -28,6 +37,15 @@ class Quote(models.Model):
     @property
     def janice_url(self) -> str:
         return f"https://janice.e-351.com/a/{self.code}"
+
+    @property
+    def contract_expires_at(self):
+        """When a contract created at generation time would have expired.
+
+        Computed rather than stored: it is a pure function of two frozen
+        fields, so storing it would be a third copy of the same fact.
+        """
+        return self.created_at + timedelta(days=self.contract_days)
 
     def __str__(self):
         return f"{self.code} ({self.total_value} ISK)"
