@@ -10,9 +10,9 @@ EVE expects — callers pass ISK through |unlocalize so a comma decimal separato
 from a non-English locale never reaches the game client.
 {% endcomment %}
 <button type="button"
-        class="copy-btn ml-2 inline-flex shrink-0 items-center rounded p-1 align-middle
-               text-gray-500 transition-colors hover:text-white focus:outline-none
-               focus-visible:ring-1 focus-visible:ring-[#fca311]"
+        class="copy-btn ml-2 inline-flex shrink-0 items-center p-1 align-middle
+               text-text-muted transition-colors hover:text-accent focus:outline-none
+               focus-visible:text-accent"
         data-copy="{{ value }}"
         aria-label="{% blocktranslate %}Copy {{ label }}{% endblocktranslate %}"
         title="{% blocktranslate %}Copy {{ label }}{% endblocktranslate %}">
@@ -21,7 +21,7 @@ from a non-English locale never reaches the game client.
     <rect x="9" y="9" width="13" height="13" rx="2"></rect>
     <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
   </svg>
-  <svg class="copied-icon hidden h-3.5 w-3.5 text-[#7fd67f]" fill="none" stroke="currentColor"
+  <svg class="copied-icon hidden h-3.5 w-3.5 text-accent" fill="none" stroke="currentColor"
        stroke-width="3" viewBox="0 0 24 24" aria-hidden="true">
     <path d="M20 6 9 17l-5-5"></path>
   </svg>
