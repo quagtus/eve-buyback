@@ -133,3 +133,98 @@ def test_most_specific_sale_wins_within_the_sale_tier():
 )
 def test_spec_table_without_sales(item, expected):
     assert resolve_price(item, build_ruleset(), NOW).percent == expected
+
+
+def test_custom_rule_tie_break_prefers_higher_percent_first_order():
+    """Same-level tie: highest percent wins, not iteration/tuple order (Fix 1)."""
+    low = Rule(label="Low", percent=Decimal("60.00"), type_ids=frozenset({638}))
+    high = Rule(label="High", percent=Decimal("85.00"), type_ids=frozenset({638}))
+
+    ruleset = RuleSet(custom_rules=(low, high), category_defaults={6: Decimal("80.00")})
+    decision = resolve_price(RAVEN, ruleset, NOW)
+
+    assert decision.percent == Decimal("85.00")
+    assert decision.source_label == "High"
+
+
+def test_custom_rule_tie_break_prefers_higher_percent_second_order():
+    """Identical tie to the test above with the tuple order reversed — the
+    result must not change, proving the outcome isn't order-dependent."""
+    low = Rule(label="Low", percent=Decimal("60.00"), type_ids=frozenset({638}))
+    high = Rule(label="High", percent=Decimal("85.00"), type_ids=frozenset({638}))
+
+    ruleset = RuleSet(custom_rules=(high, low), category_defaults={6: Decimal("80.00")})
+    decision = resolve_price(RAVEN, ruleset, NOW)
+
+    assert decision.percent == Decimal("85.00")
+    assert decision.source_label == "High"
+
+
+def test_sale_tie_break_prefers_higher_percent_first_order():
+    """Reproduces the reported bug: two overlapping active sales on the same
+    type must resolve to the higher percent (99%), not whichever the DB
+    ordering (SaleRule.Meta.ordering = ["-valid_from"]) happened to put
+    first."""
+    sale_85 = Rule(
+        label="Sale 85",
+        percent=Decimal("85.00"),
+        type_ids=frozenset({638}),
+        valid_from=datetime(2026, 8, 1, tzinfo=timezone.utc),
+        valid_to=datetime(2026, 8, 31, tzinfo=timezone.utc),
+    )
+    sale_99 = Rule(
+        label="Sale 99",
+        percent=Decimal("99.00"),
+        type_ids=frozenset({638}),
+        valid_from=datetime(2026, 8, 10, tzinfo=timezone.utc),
+        valid_to=datetime(2026, 8, 20, tzinfo=timezone.utc),
+    )
+
+    decision = resolve_price(RAVEN, build_ruleset(sales=(sale_85, sale_99)), NOW)
+
+    assert decision.percent == Decimal("99.00")
+    assert decision.source_label == "Sale 99"
+
+
+def test_sale_tie_break_prefers_higher_percent_second_order():
+    """Identical tie to the test above with the tuple order reversed — the
+    result must not change, proving the outcome isn't order-dependent."""
+    sale_85 = Rule(
+        label="Sale 85",
+        percent=Decimal("85.00"),
+        type_ids=frozenset({638}),
+        valid_from=datetime(2026, 8, 1, tzinfo=timezone.utc),
+        valid_to=datetime(2026, 8, 31, tzinfo=timezone.utc),
+    )
+    sale_99 = Rule(
+        label="Sale 99",
+        percent=Decimal("99.00"),
+        type_ids=frozenset({638}),
+        valid_from=datetime(2026, 8, 10, tzinfo=timezone.utc),
+        valid_to=datetime(2026, 8, 20, tzinfo=timezone.utc),
+    )
+
+    decision = resolve_price(RAVEN, build_ruleset(sales=(sale_99, sale_85)), NOW)
+
+    assert decision.percent == Decimal("99.00")
+    assert decision.source_label == "Sale 99"
+
+
+def test_specificity_still_beats_percent_across_levels():
+    """Regression: specificity remains absolute across levels. A type-level
+    rule at 10% must still beat a group-level rule at 90% — percent only
+    breaks ties WITHIN a level, it never promotes a less specific rule."""
+    type_rule = Rule(label="Type Rule", percent=Decimal("10.00"), type_ids=frozenset({638}))
+    group_rule = Rule(label="Group Rule", percent=Decimal("90.00"), group_ids=frozenset({27}))
+
+    ruleset_a = RuleSet(
+        custom_rules=(group_rule, type_rule), category_defaults={6: Decimal("80.00")}
+    )
+    ruleset_b = RuleSet(
+        custom_rules=(type_rule, group_rule), category_defaults={6: Decimal("80.00")}
+    )
+
+    for ruleset in (ruleset_a, ruleset_b):
+        decision = resolve_price(RAVEN, ruleset, NOW)
+        assert decision.percent == Decimal("10.00")
+        assert decision.source_label == "Type Rule"

@@ -14,13 +14,13 @@ def _to_rule(instance, *, with_window: bool) -> Rule:
         category_ids=frozenset(c.id for c in instance.categories.all()),
         group_ids=frozenset(g.id for g in instance.groups.all()),
         type_ids=frozenset(t.id for t in instance.types.all()),
-        valid_from=instance.valid_from if with_window else None,
-        valid_to=instance.valid_to if with_window else None,
+        valid_from=getattr(instance, "valid_from", None) if with_window else None,
+        valid_to=getattr(instance, "valid_to", None) if with_window else None,
     )
 
 
 def load_ruleset() -> RuleSet:
-    entries = BlacklistEntry.objects.all()
+    entries = list(BlacklistEntry.objects.all())
 
     custom = CustomRule.objects.prefetch_related("categories", "groups", "types")
     sales = SaleRule.objects.prefetch_related("categories", "groups", "types")

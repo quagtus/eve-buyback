@@ -22,14 +22,36 @@ ZERO = Decimal("0")
 
 
 def _best_match(rules: tuple[Rule, ...], item: ItemClassification) -> Rule | None:
-    """Return the rule matching `item` at the most specific level, or None."""
+    """Return the rule matching `item` at the most specific level, or None.
+
+    Specificity is absolute: a higher match level always wins regardless of
+    percent. Only when two rules match at the *same* level does percent come
+    into play, as a deterministic tie-break — the highest percent wins.
+
+    That same-level tie is a defensive backstop, not the primary conflict
+    policy. Overlapping same-level rules are supposed to be impossible: the
+    admin form blocks them via `find_conflicts`. But that guard only exists
+    at the form layer, so direct ORM writes (a shell script, a data
+    migration, a fixture load) can still produce two same-level matches. If
+    that ever happens, iteration order must not silently decide the price —
+    it would otherwise reflect Django `Meta.ordering` clauses written for
+    admin list display (e.g. `["-valid_from"]`), not pricing, and could quote
+    the seller a worse price than the data actually allows. Honouring the
+    higher percent is the defensible business behaviour for a buyback in
+    that broken-data state: the seller gets the better of the two offers
+    rather than an arbitrary one.
+    """
     best: Rule | None = None
     best_level = None
     for rule in rules:
         level = rule.match_level(item)
         if level is None:
             continue
-        if best_level is None or level > best_level:
+        if (
+            best_level is None
+            or level > best_level
+            or (level == best_level and rule.percent > best.percent)
+        ):
             best, best_level = rule, level
     return best
 

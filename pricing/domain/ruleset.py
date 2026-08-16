@@ -44,6 +44,15 @@ class Rule:
         return None
 
     def is_active(self, now: datetime) -> bool:
+        """Return whether this rule is active at `now`.
+
+        `now` must be timezone-aware whenever a sale window is configured
+        (`valid_from` and/or `valid_to` set) — comparing it against a
+        timezone-aware bound otherwise raises `TypeError: can't compare
+        offset-naive and offset-aware datetimes`. Callers should pass
+        Django's timezone-aware `timezone.now()` helper, not the naive
+        `datetime.now()` or `datetime.utcnow()`.
+        """
         if self.valid_from is not None and now < self.valid_from:
             return False
         if self.valid_to is not None and now > self.valid_to:

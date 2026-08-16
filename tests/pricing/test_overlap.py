@@ -61,3 +61,11 @@ def test_open_ended_windows_overlap_everything():
     assert windows_overlap(None, None, AUG, AUG_END) is True
     assert windows_overlap(AUG, None, SEP, SEP_END) is True
     assert windows_overlap(None, AUG, SEP, SEP_END) is False
+
+
+def test_touching_endpoints_conflict_closed_intervals():
+    """Deliberate closed-interval choice (see module docstring): a sale that
+    ends exactly when the next one begins still touches, so the two DO
+    conflict. Locks this in so a future switch to half-open intervals fails
+    loudly instead of silently changing which sale applies."""
+    assert windows_overlap(AUG, AUG_END, AUG_END, SEP_END) is True
