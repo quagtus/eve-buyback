@@ -46,14 +46,41 @@ class SiteConfig(models.Model):
         choices=PricingVariant.choices,
         default=PricingVariant.IMMEDIATE,
     )
+    site_name = models.CharField(
+            max_length=255,
+            blank=True,
+            help_text="Website name for the buyback.",
+        )
+    site_description = models.TextField(
+        blank=True,
+        help_text="Shown on the home page.",
+    )
+    site_footer = models.TextField(
+        blank=True,
+        help_text="Shown at the bottom of every page.",
+    )
+    site_logo = models.ImageField(
+        blank=True,
+        upload_to="static/img/",
+        help_text="Shown on every page.",
+    )
     contract_to = models.CharField(
         max_length=255,
         blank=True,
         help_text="Character or corporation that sellers should contract to.",
     )
+    contract_default_days = models.PositiveIntegerField(
+        default=3,
+        help_text="Default number of days for the contract.",
+    )
     contract_instructions = models.TextField(
         blank=True,
         help_text="Shown on every quote and frozen into each quote.",
+    )
+    contract_station = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Station where the contract should be delivered (frozen into each quote).",
     )
 
     class Meta:

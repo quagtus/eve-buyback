@@ -2,6 +2,7 @@ from django.conf import settings
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.translation import gettext as _
 from django_ratelimit.decorators import ratelimit
 
 from buyback.domain.gateway import AppraisalError
@@ -60,22 +61,22 @@ def submit(request):
 
     if getattr(request, "limited", False):
         return _error(
-            request, "Too many quotes requested. Please try again later.", status=429
+            request, _("Too many quotes requested. Please try again later."), status=429
         )
 
     raw_text = (request.POST.get("raw_text") or "").strip()
     if not raw_text:
-        return _error(request, "Paste your items before requesting a quote.")
+        return _error(request, _("Paste your items before requesting a quote."))
 
     try:
         quote = generate_quote(raw_text, build_default_gateway())
     except EmptyAppraisalError:
-        return _error(request, "None of those lines could be priced.")
+        return _error(request, _("None of those lines could be priced."))
     except DuplicateQuoteError:
-        return _error(request, "That quote already exists. Please try again.")
+        return _error(request, _("That quote already exists. Please try again."))
     except AppraisalError:
         return _error(
-            request, "The price service is unavailable right now. Please try again."
+            request, _("The price service is unavailable right now. Please try again.")
         )
 
     return _redirect_to_quote(request, quote)

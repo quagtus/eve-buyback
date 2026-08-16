@@ -11,6 +11,36 @@
    see the plan's Verified External Facts table. Literal Nord fails
    contrast for dark muted text, dark danger text, and light accent. */
 :root {
+  --surface: #2E3440;
+  --surface-raised: #3B4252;
+  --border: #4C566A;
+  --text: #ECEFF4;
+  --text-muted: #ACB6C6;
+  --accent: #88C0D0;
+  --accent-contrast: #2E3440;
+  --danger: #E0A0A6;
+  --danger-surface: #3A2C2E;
+}
+
+/* The OS explicitly prefers light and the user has not overridden it.
+   This is what makes the no-JS path match the scripted one: dark is the
+   default, light applies only on an explicit OS signal. */
+@media (prefers-color-scheme: light) {
+  :root:not(.dark) {
+  --surface: #ECEFF4;
+  --surface-raised: #FFFFFF;
+  --border: #D8DEE9;
+  --text: #2E3440;
+  --text-muted: #434C5E;
+  --accent: #3F5A7D;
+  --accent-contrast: #FFFFFF;
+  --danger: #A54049;
+  --danger-surface: #F7E4E6;
+  }
+}
+
+/* Explicit user choices win in both directions. */
+:root.light {
   --surface: #ECEFF4;
   --surface-raised: #FFFFFF;
   --border: #D8DEE9;

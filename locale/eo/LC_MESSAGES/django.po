@@ -1,0 +1,119 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-08-16 17:27+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+#: buyback/templates/buyback/form.html:6
+msgid ""
+"Paste your items below (copy from your in-game inventory) to get a buyback "
+"quote."
+msgstr ""
+
+#: buyback/templates/buyback/form.html:15
+msgid "Raven\t1"
+msgstr ""
+
+#: buyback/templates/buyback/form.html:15
+msgid "Tritanium\t1000"
+msgstr ""
+
+#: buyback/templates/buyback/form.html:22
+msgid "Get quote"
+msgstr ""
+
+#: buyback/templates/buyback/form.html:28
+#, python-format
+msgid "Accepted contracts go to <strong>%(corp)s</strong>."
+msgstr ""
+
+#: buyback/templates/buyback/quote.html:4
+#: buyback/templates/buyback/quote.html:79
+#, python-format
+msgid "Quote %(code)s"
+msgstr ""
+
+#: buyback/templates/buyback/quote.html:83
+#, python-format
+msgid "Generated %(created)s. This page is permanent and will not change."
+msgstr ""
+
+#: buyback/templates/buyback/quote.html:91
+msgid "Item"
+msgstr ""
+
+#: buyback/templates/buyback/quote.html:92
+msgid "Qty"
+msgstr ""
+
+#: buyback/templates/buyback/quote.html:93
+msgid "Unit price"
+msgstr ""
+
+#: buyback/templates/buyback/quote.html:94
+msgid "Rate"
+msgstr ""
+
+#: buyback/templates/buyback/quote.html:95
+msgid "Source"
+msgstr ""
+
+#: buyback/templates/buyback/quote.html:96
+msgid "Total"
+msgstr ""
+
+#: buyback/templates/buyback/quote.html:120
+#, python-format
+msgid "Total offer: %(total)s ISK"
+msgstr ""
+
+#: buyback/templates/buyback/quote.html:125
+msgid "How to sell"
+msgstr ""
+
+#: buyback/templates/buyback/quote.html:127
+#, python-format
+msgid "Create an in-game contract to <strong>%(corp)s</strong>."
+msgstr ""
+
+#: buyback/templatetags/buyback_labels.py:17
+#: buyback/templatetags/buyback_labels.py:23
+msgid "Blacklisted"
+msgstr "Malpermesita"
+
+#: buyback/templatetags/buyback_labels.py:18
+msgid "Category default"
+msgstr ""
+
+#: buyback/templatetags/buyback_labels.py:24
+msgid "No rule configured"
+msgstr ""
+
+#: buyback/templatetags/buyback_labels.py:25
+msgid "Unrecognized item"
+msgstr ""
+
+#: buyback/templatetags/buyback_labels.py:26
+msgid "Could not be parsed"
+msgstr ""
+
+#: templates/base.html:49
+msgid "Language"
+msgstr ""
+
+#: templates/base.html:64
+msgid "Toggle colour theme"
+msgstr ""

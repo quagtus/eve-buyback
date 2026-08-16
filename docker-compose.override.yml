@@ -1,0 +1,15 @@
+# Development-only services.
+#
+# Compose auto-merges docker-compose.override.yml for a plain `docker compose up`,
+# but NOT when files are named explicitly, e.g.
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up
+# So the CSS watcher runs in development and never in production, with no flags
+# to remember. Production compiles the stylesheet during the image build instead.
+services:
+  tailwind:
+    build: .
+    command: tailwindcss -i assets/css/input.css -o static/css/app.css --watch
+    volumes:
+      - .:/app
+    depends_on:
+      - web

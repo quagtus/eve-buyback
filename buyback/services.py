@@ -59,7 +59,7 @@ def generate_quote(
 
     ruleset = load_ruleset()
     classifications = _classifications({item.type_id for item in appraisal.items})
-    quote = build_quote(appraisal, ruleset, classifications, timezone.now())
+    quote_record = build_quote(appraisal, ruleset, classifications, timezone.now())
 
     # The IntegrityError must be caught OUTSIDE the atomic block: Django
     # marks an atomic block's transaction as broken the instant an exception
@@ -70,8 +70,8 @@ def generate_quote(
     try:
         with transaction.atomic():
             quote = Quote.objects.create(
-                code=quote.code,
-                total_value=quote.total_value,
+                code=quote_record.code,
+                total_value=quote_record.total_value,
                 contract_to=config.contract_to,
                 contract_instructions=config.contract_instructions,
             )
@@ -90,11 +90,11 @@ def generate_quote(
                         is_flagged=line.is_flagged,
                         flag_reason_code=line.flag_reason.value if line.flag_reason else None,
                     )
-                    for line in quote.lines
+                    for line in quote_record.lines
                 ]
             )
     except IntegrityError as exc:
         raise DuplicateQuoteError(
-            f"A quote with code {quote.code!r} already exists."
+            f"A quote with code {quote_record.code!r} already exists."
         ) from exc
     return quote

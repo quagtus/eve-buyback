@@ -193,3 +193,22 @@ def test_non_htmx_submit_still_returns_a_plain_302(client, monkeypatch, settings
     assert response.status_code == 302
     assert response.url == reverse("buyback:quote", args=["plaincode"])
     assert "HX-Redirect" not in response.headers
+
+
+@pytest.mark.django_db
+def test_form_page_renders_without_a_site_logo(client):
+    """A fresh install has no uploaded logo.
+
+    Regression: base.html called {{ SITE_LOGO.url }} unguarded, and .url raises
+    ValueError when no file is associated — so every public page 500'd until an
+    admin uploaded an image.
+    """
+    from siteconfig.models import SiteConfig
+
+    config = SiteConfig.load()
+    assert not config.site_logo, "fixture assumption: no logo on a fresh config"
+
+    response = client.get(reverse("buyback:form"))
+
+    assert response.status_code == 200
+    assert b"<img" not in response.content

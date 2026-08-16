@@ -44,8 +44,14 @@ TEMPLATES = [
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.request",
+                # Supplies LANGUAGES and LANGUAGE_CODE to templates. Without it
+                # base.html's `{% if LANGUAGES|length > 1 %}` is always false, so
+                # the language switcher never renders no matter how many locales
+                # are configured, and <html lang> is stuck on "en".
+                "django.template.context_processors.i18n",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                'siteconfig.context_processors.site_config',
             ],
         },
     },
