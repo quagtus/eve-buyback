@@ -7,19 +7,19 @@
 /* Class-based dark mode: the root <html> carries .dark */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Nord, expressed as semantic roles. Values are WCAG-AA verified —
-   see the plan's Verified External Facts table. Literal Nord fails
-   contrast for dark muted text, dark danger text, and light accent. */
+/* EVE Online's in-game client palette, expressed as semantic roles. Values
+   are WCAG-AA verified — see the plan's Verified External Facts table. */
 :root {
-  --surface: #2E3440;
-  --surface-raised: #3B4252;
-  --border: #4C566A;
-  --text: #ECEFF4;
-  --text-muted: #ACB6C6;
-  --accent: #88C0D0;
-  --accent-contrast: #2E3440;
-  --danger: #E0A0A6;
-  --danger-surface: #3A2C2E;
+  --surface: #020508;
+  --surface-raised: #0b131a;
+  --border: #2a3c4d;
+  --text: #cfd8dc;
+  --text-muted: #8fa3ad;
+  --accent: #fca311;
+  --accent-contrast: #020508;
+  --link: #64b5f6;
+  --danger: #e57373;
+  --danger-surface: #2a1416;
 }
 
 /* The OS explicitly prefers light and the user has not overridden it.
@@ -27,41 +27,44 @@
    default, light applies only on an explicit OS signal. */
 @media (prefers-color-scheme: light) {
   :root:not(.dark) {
-  --surface: #ECEFF4;
-  --surface-raised: #FFFFFF;
-  --border: #D8DEE9;
-  --text: #2E3440;
-  --text-muted: #434C5E;
-  --accent: #3F5A7D;
-  --accent-contrast: #FFFFFF;
-  --danger: #A54049;
-  --danger-surface: #F7E4E6;
+    --surface: #e4e9ec;
+    --surface-raised: #f4f7f8;
+    --border: #c2ccd2;
+    --text: #10181f;
+    --text-muted: #4a5a66;
+    --accent: #8a5000;
+    --accent-contrast: #ffffff;
+    --link: #1c5f96;
+    --danger: #a3231f;
+    --danger-surface: #f7e2e1;
   }
 }
 
 /* Explicit user choices win in both directions. */
 :root.light {
-  --surface: #ECEFF4;
-  --surface-raised: #FFFFFF;
-  --border: #D8DEE9;
-  --text: #2E3440;
-  --text-muted: #434C5E;
-  --accent: #3F5A7D;
-  --accent-contrast: #FFFFFF;
-  --danger: #A54049;
-  --danger-surface: #F7E4E6;
+  --surface: #e4e9ec;
+  --surface-raised: #f4f7f8;
+  --border: #c2ccd2;
+  --text: #10181f;
+  --text-muted: #4a5a66;
+  --accent: #8a5000;
+  --accent-contrast: #ffffff;
+  --link: #1c5f96;
+  --danger: #a3231f;
+  --danger-surface: #f7e2e1;
 }
 
 :root.dark {
-  --surface: #2E3440;
-  --surface-raised: #3B4252;
-  --border: #4C566A;
-  --text: #ECEFF4;
-  --text-muted: #ACB6C6;
-  --accent: #88C0D0;
-  --accent-contrast: #2E3440;
-  --danger: #E0A0A6;
-  --danger-surface: #3A2C2E;
+  --surface: #020508;
+  --surface-raised: #0b131a;
+  --border: #2a3c4d;
+  --text: #cfd8dc;
+  --text-muted: #8fa3ad;
+  --accent: #fca311;
+  --accent-contrast: #020508;
+  --link: #64b5f6;
+  --danger: #e57373;
+  --danger-surface: #2a1416;
 }
 
 @theme {
@@ -72,6 +75,7 @@
   --color-text-muted: var(--text-muted);
   --color-accent: var(--accent);
   --color-accent-contrast: var(--accent-contrast);
+  --color-link: var(--link);
   --color-danger: var(--danger);
   --color-danger-surface: var(--danger-surface);
 }
@@ -81,10 +85,34 @@ body {
   color: var(--text);
 }
 
-/* EVE client contract-dialog mockup shown on the quote page.
-   These deliberately do NOT use the Nord theme tokens: the panel replicates
-   the in-game client, which is always dark, so it stays dark in both site
-   themes rather than turning into a light card that no longer resembles EVE. */
+/* Chamfered corners, EVE's signature diagonal cut.
+
+   clip-path clips everything the element paints — including its border and
+   its focus outline. So a chamfered panel cannot use `border`, and a
+   chamfered control cannot use `outline` for focus.
+
+   The fix is two nested elements whose clip paths differ by 1px:
+     .eve-frame  outer, painted the border colour, clipped 1px larger
+     .eve-fill   inner, painted the fill colour, clipped 1px smaller
+   The differential is the visible hairline, and it follows the cut.
+
+   Focus is expressed by recolouring the frame (see focus-within in the
+   templates), never by an outline, which would be clipped away. */
+@utility eve-frame {
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 13px), calc(100% - 13px) 100%, 0 100%);
+}
+@utility eve-fill {
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
+}
+@utility eve-frame-sm {
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%);
+}
+@utility eve-fill-sm {
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%);
+}
+
+/* Retained: the contract dialog replicates the in-game window and keeps its
+   own button shape. Do not fold these into the utilities above. */
 .eve-button-chamfer {
   clip-path: polygon(0 0, 100% 0, 100% 65%, 85% 100%, 0 100%);
 }

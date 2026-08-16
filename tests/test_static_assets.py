@@ -55,7 +55,7 @@ def test_no_js_visitors_get_the_dark_theme():
     by_selector = {sel.strip(): body for sel, body in token_blocks}
 
     assert ":root" in by_selector, "no bare :root token block found"
-    assert "--surface:#2e3440" in by_selector[":root"], (
+    assert "--surface:#020508" in by_selector[":root"], (
         "bare :root must carry the DARK surface so no-JS visitors get dark"
     )
     assert "prefers-color-scheme:light" in css, (
