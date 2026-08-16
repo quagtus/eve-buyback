@@ -355,6 +355,29 @@ class PriceDecision:
 Add to the same file, above `PriceDecision`:
 
 ```python
+Also change `PriceSourceKind`'s values to UPPERCASE in the same file. They were
+lowercase (`"blacklist"`), but they are persisted to `price_source_kind` and read
+back by the Task 4 filter, which uses uppercase keys — and the Task 3 backfill
+writes uppercase too. Left lowercase, every newly generated quote renders a blank
+Source column while backfilled rows look correct:
+
+```python
+class PriceSourceKind(StrEnum):
+    """Which category of rule set an item's price.
+
+    Values are UPPERCASE because they are persisted and looked up by the
+    presentation layer; they must match the backfill migration's keys and
+    the template filter's keys.
+    """
+
+    BLACKLIST = "BLACKLIST"
+    SALE = "SALE"
+    CUSTOM = "CUSTOM"
+    CATEGORY_DEFAULT = "CATEGORY_DEFAULT"
+    NONE = "NONE"
+```
+
+```python
 class FlagReason(StrEnum):
     """Why a line was rejected. A stable key — never displayed raw."""
 

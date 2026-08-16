@@ -71,7 +71,7 @@ def test_generates_a_snapshot_with_frozen_values(configured):
 
     item = snapshot.items.get()
     assert item.percent_applied == Decimal("70.00")
-    assert item.price_source_kind == "custom"
+    assert item.price_source_kind == "CUSTOM"
     assert item.price_source_label == "Battleships"
 
 
