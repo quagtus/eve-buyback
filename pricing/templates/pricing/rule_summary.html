@@ -2,15 +2,16 @@
 
 {% block content %}
   <h1>Rule summary</h1>
-  <p style="color:#6b7280;max-width:60ch">
+  <p style="color:#4a5a66;max-width:60ch">
     Ordered by precedence: blacklist beats sales, sales beat custom rules,
     custom rules beat category defaults. Within a tier, the most specific
     match wins.
   </p>
 
-  <div style="overflow-x:auto;border:1px solid #d8dee9;border-radius:8px;margin-top:1rem">
+  <div style="overflow-x:auto;border:1px solid #c2ccd2;margin-top:1rem;
+              clip-path:polygon(0 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%)">
     <table style="width:100%;border-collapse:collapse;font-size:14px">
-      <thead style="background:#eceff4">
+      <thead style="background:#e4e9ec">
         <tr>
           <th style="text-align:left;padding:8px 12px">Tier</th>
           <th style="text-align:left;padding:8px 12px">Rule</th>
@@ -23,7 +24,7 @@
       </thead>
       <tbody>
         {% for row in rows %}
-          <tr style="border-top:1px solid #d8dee9">
+          <tr style="border-top:1px solid #c2ccd2">
             <td style="padding:8px 12px">{{ row.kind }}</td>
             <td style="padding:8px 12px">{{ row.label }}</td>
             <td style="padding:8px 12px">{{ row.level }}</td>
