@@ -52,7 +52,9 @@
 {% block content %}
 
   {% if quote.contract_to %}
-    <h3 class="mt-10 text-lg font-semibold">{% translate "How to sell" %}</h3>
+    <h3 class="mt-10 text-xs uppercase tracking-[0.15em] text-text-muted">
+      {% translate "How to sell" %}
+    </h3>
     <p class="mt-1 text-sm text-text-muted">
       {% translate "Create an in-game contract matching the values below." %}
     </p>
@@ -138,50 +140,64 @@
       </div>
     {% endif %}
   {% endif %}
-  <h2 class="text-2xl font-semibold tracking-tight">
-    {% blocktranslate with code=quote.code %}Quote {{ code }}{% endblocktranslate %}
-  </h2>
+  <div class="eve-frame bg-border-token p-px">
+    <div class="eve-fill bg-surface-raised">
+      <div class="flex flex-wrap items-baseline justify-between gap-2 border-b border-border-token/60 px-4 py-2">
+        <span class="text-xs uppercase tracking-[0.15em] text-text-muted">
+          {% translate "Buyback Quote" %}
+        </span>
+        <span class="font-mono text-sm text-accent">{{ quote.code }}</span>
+      </div>
 
-  <p class="mt-2 text-sm text-text-muted">
-    {% blocktranslate with created=quote.created_at %}Generated {{ created }}. This page is permanent and will not change.{% endblocktranslate %}
-    <a href="{{ quote.janice_url }}" class="text-accent underline">{{ quote.janice_url }}</a>
-  </p>
+      <div class="px-4 py-3">
+        <p class="text-xs text-text-muted">
+          {% blocktranslate with created=quote.created_at %}Generated {{ created }}. This page is permanent and will not change.{% endblocktranslate %}
+          <a href="{{ quote.janice_url }}" class="text-link underline">{{ quote.janice_url }}</a>
+        </p>
+      </div>
 
-  <div class="mt-6 overflow-x-auto rounded-lg border border-border-token">
-    <table class="w-full border-collapse text-sm">
-      <thead class="bg-surface-raised">
-        <tr>
-          <th class="px-3 py-2 text-left font-medium">{% translate "Item" %}</th>
-          <th class="px-3 py-2 text-right font-medium">{% translate "Qty" %}</th>
-          <th class="px-3 py-2 text-right font-medium">{% translate "Unit price" %}</th>
-          <th class="px-3 py-2 text-right font-medium">{% translate "Rate" %}</th>
-          <th class="px-3 py-2 text-left font-medium">{% translate "Source" %}</th>
-          <th class="px-3 py-2 text-right font-medium">{% translate "Total" %}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for item in quote.items.all %}
-          <tr class="border-t border-border-token {% if item.is_flagged %}bg-danger-surface{% endif %}">
-            <td class="px-3 py-2 {% if item.is_flagged %}text-danger{% endif %}">
-              {{ item.type_name }}
-              {% if item.is_flagged %}
-                <div class="text-xs">{{ item|flag_reason_label }}</div>
-              {% endif %}
-            </td>
-            <td class="px-3 py-2 text-right tabular-nums">{{ item.quantity }}</td>
-            <td class="px-3 py-2 text-right tabular-nums">{{ item.unit_price }}</td>
-            <td class="px-3 py-2 text-right tabular-nums">{{ item.percent_applied }}%</td>
-            <td class="px-3 py-2 text-text-muted">{{ item|price_source_label }}</td>
-            <td class="px-3 py-2 text-right tabular-nums">{{ item.line_total }}</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+      <div class="overflow-x-auto border-t border-border-token/60">
+        <table class="w-full border-collapse text-sm">
+          <thead>
+            <tr class="bg-surface/60">
+              <th class="px-3 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wider text-text-muted">{% translate "Item" %}</th>
+              <th class="px-3 py-1.5 text-right text-[11px] font-semibold uppercase tracking-wider text-text-muted">{% translate "Qty" %}</th>
+              <th class="px-3 py-1.5 text-right text-[11px] font-semibold uppercase tracking-wider text-text-muted">{% translate "Unit price" %}</th>
+              <th class="px-3 py-1.5 text-right text-[11px] font-semibold uppercase tracking-wider text-text-muted">{% translate "Rate" %}</th>
+              <th class="px-3 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wider text-text-muted">{% translate "Source" %}</th>
+              <th class="px-3 py-1.5 text-right text-[11px] font-semibold uppercase tracking-wider text-text-muted">{% translate "Total" %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in quote.items.all %}
+              <tr class="border-t border-border-token/40 {% if item.is_flagged %}bg-danger-surface{% endif %}">
+                <td class="px-3 py-1.5 {% if item.is_flagged %}text-danger{% endif %}">
+                  {{ item.type_name }}
+                  {% if item.is_flagged %}
+                    <div class="text-[11px] uppercase tracking-wider">{{ item|flag_reason_label }}</div>
+                  {% endif %}
+                </td>
+                <td class="px-3 py-1.5 text-right font-mono tabular-nums">{{ item.quantity }}</td>
+                <td class="px-3 py-1.5 text-right font-mono tabular-nums">{{ item.unit_price }}</td>
+                <td class="px-3 py-1.5 text-right font-mono tabular-nums">{{ item.percent_applied }}%</td>
+                <td class="px-3 py-1.5 text-xs text-text-muted">{{ item|price_source_label }}</td>
+                <td class="px-3 py-1.5 text-right font-mono tabular-nums">{{ item.line_total }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="flex items-baseline justify-between gap-4 border-t border-border-token px-4 py-3">
+        <span class="text-xs uppercase tracking-[0.15em] text-text-muted">
+          {% translate "Total offer" %}
+        </span>
+        <span class="font-mono text-2xl font-bold tabular-nums text-accent">
+          {{ quote.total_value }} ISK
+        </span>
+      </div>
+    </div>
   </div>
-
-  <p class="mt-6 text-2xl font-bold tabular-nums">
-    {% blocktranslate with total=quote.total_value %}Total offer: {{ total }} ISK{% endblocktranslate %}
-  </p>
 
   <div id="copy-status" class="sr-only" role="status" aria-live="polite"></div>
 
