@@ -1,0 +1,38 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+  <h1>Rule summary</h1>
+  <p>Ordered by precedence: blacklist beats sales, sales beat custom rules,
+     custom rules beat category defaults. Within a tier, the most specific
+     match wins.</p>
+
+  <table style="width:100%;border-collapse:collapse">
+    <thead>
+      <tr>
+        <th style="text-align:left">Tier</th>
+        <th style="text-align:left">Rule</th>
+        <th style="text-align:left">Level</th>
+        <th style="text-align:left">Targets</th>
+        <th style="text-align:right">Percent</th>
+        <th style="text-align:left">Status</th>
+        <th style="text-align:left">Window</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+        <tr style="border-top:1px solid #ddd">
+          <td>{{ row.kind }}</td>
+          <td>{{ row.label }}</td>
+          <td>{{ row.level }}</td>
+          <td>{{ row.targets|join:", "|truncatechars:80 }}</td>
+          <td style="text-align:right">
+            {% if row.percent is not None %}{{ row.percent }}%{% else %}—{% endif %}
+          </td>
+          <td>{{ row.status }}</td>
+          <td>{{ row.window }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="7">No rules configured yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}
