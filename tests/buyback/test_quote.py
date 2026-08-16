@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from buyback.domain.appraisal import AppraisalItem, AppraisalResult
-from buyback.domain.quote import build_quote
+from buyback.domain.quote import MAX_TYPE_NAME_LENGTH, build_quote
 from pricing.domain.ruleset import ItemClassification, Rule, RuleSet
 
 NOW = datetime(2026, 8, 16, 12, 0, tzinfo=timezone.utc)
@@ -95,6 +95,30 @@ def test_janice_failures_become_flagged_zero_value_lines():
     assert failure_line.is_flagged is True
     assert failure_line.flag_reason == "Could not be parsed"
     assert failure_line.line_total == Decimal("0.00")
+
+
+def test_oversized_failure_line_is_truncated_to_the_column_width():
+    result = appraisal(
+        [AppraisalItem(type_id=638, name="Raven", quantity=1, unit_price=Decimal("100.00"))],
+        failures=["x" * 500],
+    )
+
+    quote = build_quote(result, RULESET, CLASSIFICATIONS, NOW)
+
+    failure_line = quote.lines[-1]
+    assert len(failure_line.type_name) == MAX_TYPE_NAME_LENGTH
+    assert failure_line.type_name == "x" * MAX_TYPE_NAME_LENGTH
+
+
+def test_normal_short_failure_line_is_unchanged():
+    result = appraisal(
+        [AppraisalItem(type_id=638, name="Raven", quantity=1, unit_price=Decimal("100.00"))],
+        failures=["definitely not an item"],
+    )
+
+    quote = build_quote(result, RULESET, CLASSIFICATIONS, NOW)
+
+    assert quote.lines[-1].type_name == "definitely not an item"
 
 
 def test_total_equals_the_sum_of_displayed_lines():

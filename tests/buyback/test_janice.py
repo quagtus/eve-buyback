@@ -118,3 +118,87 @@ def test_missing_code_raises_appraisal_error():
 
     with pytest.raises(AppraisalError):
         build_gateway().create_appraisal("Raven 2")
+
+
+@responses.activate
+def test_high_precision_price_survives_without_float_rounding():
+    # Raw JSON body (not the json= kwarg) so the number is never re-serialized
+    # through a Python float before hitting our parser.
+    body = """
+    {
+        "code": "4ovArs",
+        "created": "2026-08-16T12:00:00Z",
+        "expires": "2026-09-16T12:00:00Z",
+        "failures": null,
+        "items": [
+            {
+                "amount": 1,
+                "itemType": {"eid": 638, "name": "Raven"},
+                "effectivePrices": {
+                    "buyPrice": 100000000000000.01,
+                    "splitPrice": 100000000000000.01,
+                    "sellPrice": 100000000000000.01
+                }
+            }
+        ]
+    }
+    """
+    responses.add(
+        responses.POST,
+        APPRAISAL_URL,
+        body=body,
+        status=200,
+        content_type="application/json",
+    )
+
+    result = build_gateway().create_appraisal("Raven 1")
+
+    assert result.items[0].unit_price == Decimal("100000000000000.01")
+
+
+@responses.activate
+def test_malformed_item_entry_is_surfaced_as_a_failure_not_dropped():
+    payload = {
+        "code": "4ovArs",
+        "created": "2026-08-16T12:00:00Z",
+        "expires": "2026-09-16T12:00:00Z",
+        "failures": None,
+        "items": [
+            {
+                "amount": 2,
+                "itemType": {"eid": 638, "name": "Raven"},
+                "effectivePrices": {
+                    "buyPrice": 250000000.0,
+                    "splitPrice": 275000000.0,
+                    "sellPrice": 300000000.0,
+                },
+            },
+            {
+                "amount": 1,
+                "itemType": None,
+                "effectivePrices": {
+                    "buyPrice": 1.0,
+                    "splitPrice": 1.0,
+                    "sellPrice": 1.0,
+                },
+            },
+        ],
+    }
+    responses.add(responses.POST, APPRAISAL_URL, json=payload, status=200)
+
+    result = build_gateway().create_appraisal("Raven 2")
+
+    assert len(result.items) == 1
+    assert result.items[0].type_id == 638
+    assert len(result.failures) == 1
+    assert "unknown" in result.failures[0]
+
+
+@responses.activate
+def test_invalid_pricing_basis_raises_appraisal_error_not_key_error():
+    responses.add(responses.POST, APPRAISAL_URL, json=SAMPLE_RESPONSE, status=200)
+
+    gateway = build_gateway(basis="not-a-real-basis")
+
+    with pytest.raises(AppraisalError):
+        gateway.create_appraisal("Raven 2")

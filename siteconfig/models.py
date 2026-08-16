@@ -16,12 +16,24 @@ class PricingVariant(models.TextChoices):
     TOP5PERCENT = "top5percent", "Top 5 percent"
 
 
+class SiteConfigQuerySet(models.QuerySet):
+    def delete(self):
+        """Bulk deletion is blocked; the singleton must always exist."""
+        return (0, {})
+
+
+class SiteConfigManager(models.Manager.from_queryset(SiteConfigQuerySet)):
+    pass
+
+
 class SiteConfig(models.Model):
     """Admin-managed settings. Always exactly one row, pk=1.
 
     The Janice API key is deliberately NOT here — it is an environment
     variable, so the credential stays out of the database and its backups.
     """
+
+    objects = SiteConfigManager()
 
     market_id = models.PositiveIntegerField(
         default=2, help_text="Janice market ID. 2 = Jita."

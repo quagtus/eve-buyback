@@ -32,3 +32,12 @@ def test_pk_is_forced_to_one_even_if_set_otherwise():
 
     assert config.pk == 1
     assert SiteConfig.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_queryset_bulk_delete_does_not_remove_the_singleton():
+    SiteConfig.load()
+
+    SiteConfig.objects.all().delete()
+
+    assert SiteConfig.objects.count() == 1

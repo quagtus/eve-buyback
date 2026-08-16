@@ -63,7 +63,9 @@ class JaniceAppraisalGateway:
                 timeout=TIMEOUT_SECONDS,
             )
             response.raise_for_status()
-            payload = response.json()
+            # parse_float=Decimal: JSON numbers become Decimal directly, so
+            # ISK prices never round-trip through a lossy binary float.
+            payload = response.json(parse_float=Decimal)
         except requests.RequestException as exc:
             raise AppraisalError(f"Janice request failed: {exc}") from exc
         except ValueError as exc:
@@ -76,14 +78,27 @@ class JaniceAppraisalGateway:
         if not code:
             raise AppraisalError("Janice response contained no appraisal code")
 
-        price_field = PRICE_FIELDS[self._pricing_basis]
+        price_field = PRICE_FIELDS.get(self._pricing_basis)
+        if price_field is None:
+            raise AppraisalError(
+                f"Unknown pricing basis: {self._pricing_basis!r}"
+            )
+
         items = []
+        unparseable = []
         for entry in payload.get("items") or []:
             item_type = entry.get("itemType") or {}
             prices = entry.get("effectivePrices") or {}
             raw_price = prices.get(price_field)
             if item_type.get("eid") is None or raw_price is None:
+                # Never drop it silently: surface it as a flagged zero-value
+                # line so the seller can see what was rejected and why.
+                name = item_type.get("name")
+                unparseable.append(f"Unparseable item entry: {name or 'unknown'}")
                 continue
+            # raw_price already arrives as a Decimal (parse_float=Decimal
+            # above); str() round-trip is redundant but harmless if that
+            # ever changes.
             items.append(
                 AppraisalItem(
                     type_id=int(item_type["eid"]),
@@ -96,6 +111,6 @@ class JaniceAppraisalGateway:
         raw_failures = payload.get("failures") or ""
         failures = tuple(
             line.strip() for line in raw_failures.splitlines() if line.strip()
-        )
+        ) + tuple(unparseable)
 
         return AppraisalResult(code=code, items=tuple(items), failures=failures)

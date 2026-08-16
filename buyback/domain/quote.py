@@ -17,6 +17,11 @@ from pricing.domain.ruleset import ItemClassification, RuleSet
 
 ZERO_ISK = Decimal("0.00")
 
+# Mirrors SnapshotItem.type_name's column width (CharField(max_length=255)).
+# Failure text and item names are upstream/user-echoed data we don't control,
+# so they must be truncated before they ever reach persistence.
+MAX_TYPE_NAME_LENGTH = 255
+
 
 @dataclass(frozen=True)
 class QuoteLine:
@@ -52,7 +57,7 @@ def build_quote(
             lines.append(
                 QuoteLine(
                     type_id=item.type_id,
-                    type_name=item.name,
+                    type_name=item.name[:MAX_TYPE_NAME_LENGTH],
                     quantity=item.quantity,
                     unit_price=item.unit_price,
                     percent_applied=Decimal("0"),
@@ -73,7 +78,7 @@ def build_quote(
         lines.append(
             QuoteLine(
                 type_id=item.type_id,
-                type_name=item.name,
+                type_name=item.name[:MAX_TYPE_NAME_LENGTH],
                 quantity=item.quantity,
                 unit_price=item.unit_price,
                 percent_applied=decision.percent,
@@ -88,7 +93,7 @@ def build_quote(
         lines.append(
             QuoteLine(
                 type_id=None,
-                type_name=failure,
+                type_name=failure[:MAX_TYPE_NAME_LENGTH],
                 quantity=0,
                 unit_price=ZERO_ISK,
                 percent_applied=Decimal("0"),

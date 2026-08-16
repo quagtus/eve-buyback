@@ -138,3 +138,43 @@ def test_gateway_failure_persists_nothing(configured):
         generate_snapshot("Raven\t1", gateway)
 
     assert Snapshot.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_type_id_absent_from_catalog_is_flagged_via_real_classifications_query(
+    configured,
+):
+    UNKNOWN_TYPE_ID = 99999999
+    gateway = StubGateway(
+        AppraisalResult(
+            code="4ovArs",
+            items=(
+                AppraisalItem(
+                    type_id=638, name="Raven", quantity=2, unit_price=Decimal("100.00")
+                ),
+                AppraisalItem(
+                    type_id=UNKNOWN_TYPE_ID,
+                    name="Mystery Box",
+                    quantity=1,
+                    unit_price=Decimal("10.00"),
+                ),
+            ),
+            failures=(),
+        )
+    )
+
+    snapshot = generate_snapshot("Raven\t2\nMystery Box\t1", gateway)
+
+    assert Snapshot.objects.count() == 1
+    items = {item.type_id: item for item in snapshot.items.all()}
+
+    known = items[638]
+    assert known.is_flagged is False
+    assert known.line_total == Decimal("140.00")
+
+    unknown = items[UNKNOWN_TYPE_ID]
+    assert unknown.is_flagged is True
+    assert unknown.flag_reason == "Unrecognized item"
+    assert unknown.line_total == Decimal("0.00")
+
+    assert snapshot.total_value == Decimal("140.00")

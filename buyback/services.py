@@ -18,8 +18,8 @@ class EmptyAppraisalError(RuntimeError):
     """Nothing in the paste could be priced, so there is nothing to snapshot."""
 
 
-def build_default_gateway() -> JaniceAppraisalGateway:
-    config = SiteConfig.load()
+def build_default_gateway(config: SiteConfig | None = None) -> JaniceAppraisalGateway:
+    config = config or SiteConfig.load()
     return JaniceAppraisalGateway(
         api_key=settings.JANICE_API_KEY,
         base_url=settings.JANICE_BASE_URL,
@@ -43,11 +43,11 @@ def _classifications(type_ids) -> dict[int, ItemClassification]:
     }
 
 
-@transaction.atomic
 def generate_snapshot(
     raw_text: str, gateway: PriceAppraisalGateway | None = None
 ) -> Snapshot:
-    gateway = gateway or build_default_gateway()
+    config = SiteConfig.load()
+    gateway = gateway or build_default_gateway(config)
 
     appraisal = gateway.create_appraisal(raw_text)
     if not appraisal.has_items:
@@ -57,28 +57,28 @@ def generate_snapshot(
     classifications = _classifications({item.type_id for item in appraisal.items})
     quote = build_quote(appraisal, ruleset, classifications, timezone.now())
 
-    config = SiteConfig.load()
-    snapshot = Snapshot.objects.create(
-        code=quote.code,
-        total_value=quote.total_value,
-        contract_to=config.contract_to,
-        contract_instructions=config.contract_instructions,
-    )
-    SnapshotItem.objects.bulk_create(
-        [
-            SnapshotItem(
-                snapshot=snapshot,
-                type_id=line.type_id,
-                type_name=line.type_name,
-                quantity=line.quantity,
-                unit_price=line.unit_price,
-                percent_applied=line.percent_applied,
-                price_source=line.price_source,
-                line_total=line.line_total,
-                is_flagged=line.is_flagged,
-                flag_reason=line.flag_reason,
-            )
-            for line in quote.lines
-        ]
-    )
+    with transaction.atomic():
+        snapshot = Snapshot.objects.create(
+            code=quote.code,
+            total_value=quote.total_value,
+            contract_to=config.contract_to,
+            contract_instructions=config.contract_instructions,
+        )
+        SnapshotItem.objects.bulk_create(
+            [
+                SnapshotItem(
+                    snapshot=snapshot,
+                    type_id=line.type_id,
+                    type_name=line.type_name,
+                    quantity=line.quantity,
+                    unit_price=line.unit_price,
+                    percent_applied=line.percent_applied,
+                    price_source=line.price_source,
+                    line_total=line.line_total,
+                    is_flagged=line.is_flagged,
+                    flag_reason=line.flag_reason,
+                )
+                for line in quote.lines
+            ]
+        )
     return snapshot
