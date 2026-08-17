@@ -167,7 +167,7 @@ ESI_USER_AGENT = os.environ.get("ESI_USER_AGENT", "eve-buyback")
 #
 # If a check then comes back 401, ESI states which scope it wanted in the
 # response body and the page shows that text verbatim — change this to match it.
-ESI_SCOPES = os.environ.get("ESI_SCOPES", "esi-characters.read_contacts.v1")
+ESI_SCOPES = os.environ.get("ESI_SCOPES", "esi-contracts.read_character_contracts.v1")
 
 # ESI requires an X-Compatibility-Date header on every request. It pins which
 # revision of the API answers, so CCP can change response shapes without

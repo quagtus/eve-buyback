@@ -22,10 +22,15 @@ REVOKE_URL = "https://login.eveonline.com/v2/oauth/revoke"
 
 # Scopes requested at login, overridable through ESI_SCOPES. Space-separated.
 #
+# NOT esi-characters.read_contacts.v1 — that is the character address book. The
+# two names differ by one letter and both sit under /characters/, so the wrong
+# one authorises cleanly and then fails at the first check with
+# "Token is not valid for any required scope".
+#
 # SSO answers "The requested '<scope>' scope is not valid" for any scope that is
 # not selected on the application at developers.eveonline.com, so this has to be
 # configurable rather than compiled in.
-DEFAULT_SCOPES = "esi-characters.read_contacts.v1"
+DEFAULT_SCOPES = "esi-contracts.read_character_contracts.v1"
 
 TIMEOUT_SECONDS = 20
 
