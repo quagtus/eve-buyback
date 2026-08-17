@@ -25,7 +25,7 @@ REVOKE_URL = "https://login.eveonline.com/v2/oauth/revoke"
 # SSO answers "The requested '<scope>' scope is not valid" for any scope that is
 # not selected on the application at developers.eveonline.com, so this has to be
 # configurable rather than compiled in.
-DEFAULT_SCOPES = "esi-contracts.read_character_contracts.v1"
+DEFAULT_SCOPES = "esi-characters.read_contacts.v1"
 
 TIMEOUT_SECONDS = 20
 

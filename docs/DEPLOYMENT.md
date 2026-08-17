@@ -137,12 +137,12 @@ production, as in §3.)
 ## ESI contract checking (optional)
 
 1. Register an application at <https://developers.eveonline.com/applications>.
-   - Scope: `esi-contracts.read_character_contracts.v1`. It must be **ticked on
+   - Scope: `esi-characters.read_contacts.v1`. It must be **ticked on
      the application itself**, not just requested by the app. If it is missing,
      SSO answers `The requested '<scope>' scope is not valid` at login — an
      application-registration problem, not a wrong scope string. Note it is
-     `esi-contracts.read_character_contracts.v1`, not
-     `esi-contracts.read_character_contracts.v1`, which is the address book.
+     `esi-characters.read_contacts.v1`, not
+     `esi-characters.read_contacts.v1`, which is the address book.
    - Callback URL: `https://your-domain/admin/contracts/callback/` — this must
      match `ESI_CALLBACK_URL` exactly, or SSO rejects the login with
      `invalid_request: redirect_uri mismatch`.

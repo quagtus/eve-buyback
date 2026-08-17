@@ -39,7 +39,7 @@ server `https://esi.evetech.net`) and
 confidential-client flow with PKCE on top is fully supported.
 
 **`GET /characters/{character_id}/contracts`** — scope
-`esi-contracts.read_character_contracts.v1`.
+`esi-characters.read_contacts.v1`.
 
 - Paginated by a `page` query parameter; the total is in the **`X-Pages`
   response header**, not in the body.
@@ -168,7 +168,7 @@ for a re-login, which is one click.
 
 1. `GET /admin/contracts/link/` generates a `state` and a PKCE verifier, stores
    both in the session, and redirects to the authorize endpoint with scope
-   `esi-contracts.read_character_contracts.v1`, `code_challenge_method=S256`.
+   `esi-characters.read_contacts.v1`, `code_challenge_method=S256`.
 2. `GET /admin/contracts/callback/` pops `state`, compares it with
    `secrets.compare_digest`, and exchanges the code using HTTP Basic auth plus
    the `code_verifier`. A missing or mismatched `state` aborts before any token

@@ -3,7 +3,7 @@
 Schema verified against https://esi.evetech.net/meta/openapi.json (OpenAPI 3.1):
 
   GET /characters/{id}/contracts
-      scope esi-contracts.read_character_contracts.v1
+      scope esi-characters.read_contacts.v1
       paginated by ?page=N, total in the X-Pages RESPONSE HEADER
       title == the in-game contract Description
       price == the ISK the acceptor pays (item exchange and auctions)
@@ -68,10 +68,9 @@ def _authorization_error(response) -> ContractSourceError:
     """Classify a 401 or 403 from ESI.
 
     A token that lacks the scope is answered with 401 — not 403 — and the body
-    names the scope required, e.g. "Unauthorized - Token is not valid for any
-    required scope: esi-contracts.read_character_contracts.v1". Verified against
-    the live endpoint. That distinction matters because the fixes differ: a
-    missing scope needs ESI_SCOPES and the application at CCP changed, whereas an
+    names the scope it wanted, verified against the live endpoint. That
+    distinction matters because the fixes differ: a missing scope means ESI_SCOPES
+    and the application at CCP need to agree with what ESI asked for, whereas an
     expired token just needs re-linking.
     """
     detail = _esi_error(response)
