@@ -188,3 +188,12 @@ infrastructure — so verification is a pure function that tests without a datab
 or network.
 
 See [contract-check.md](contract-check.md).
+
+## Reprocessed-value pricing
+
+Ore and ice can be valued from what they reprocess into rather than from their own
+market price. Reprocessing is a second *valuation basis*: it decides what is being
+valued, while the existing four percentage tiers still decide what fraction is
+paid — applied per output material rather than to the ore.
+
+See [reprocessing.md](reprocessing.md).

@@ -92,6 +92,7 @@ port so a second price source would only need a new adapter.
 - [docs/design/architecture.md](docs/design/architecture.md) — domain model, pricing resolution, Janice integration
 - [docs/design/frontend.md](docs/design/frontend.md) — design system, theming, internationalisation
 - [docs/design/contract-check.md](docs/design/contract-check.md) — ESI contract verification
+- [docs/design/reprocessing.md](docs/design/reprocessing.md) — reprocessed-value pricing for ore and ice
 
 ## Development
 
