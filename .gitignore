@@ -7,3 +7,6 @@ static/css/app.css
 
 # Local design scratch, kept out of the repo
 contract_end_preview.html
+
+# Admin-uploaded media
+static/uploads/

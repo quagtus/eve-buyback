@@ -121,6 +121,18 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 # collectstatic silently omits the file — the whole site renders unstyled
 # while every test still passes, because tests assert on HTML, not CSS.
 STATICFILES_DIRS = [BASE_DIR / "static"]
+
+# Admin-uploaded files (currently just the site logo).
+#
+# MEDIA_ROOT was previously unset, so upload_to resolved against the working
+# directory and uploads landed loose in the source tree — which is how a 2.4 MB
+# wallpaper ended up committed. Everything under static/uploads/ is gitignored.
+#
+# The URL is /uploads/, deliberately NOT /static/uploads/: Django refuses to
+# start when MEDIA_URL sits inside STATIC_URL ("runserver can't serve media if
+# MEDIA_URL is within STATIC_URL"). Only the on-disk location is under static/.
+MEDIA_ROOT = BASE_DIR / "static" / "uploads"
+MEDIA_URL = "/uploads/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Janice integration

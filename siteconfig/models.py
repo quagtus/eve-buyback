@@ -61,7 +61,7 @@ class SiteConfig(models.Model):
     )
     site_logo = models.ImageField(
         blank=True,
-        upload_to="static/img/",
+        upload_to="",
         help_text="Shown on every page.",
     )
     contract_to = models.CharField(
