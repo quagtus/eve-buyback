@@ -1,21 +1,20 @@
-# EVE Buyback Page — Design
+# Architecture
 
-## 1. Purpose
+## Purpose
 
 A web app for running an EVE Online item buyback program. Sellers paste an in-game inventory export, get an instant priced quote (via the Janice appraisal API, adjusted by admin-configured percentage rules), and land on a permanent, unique link to that quote. The admin controls pricing rules, blacklists, and sales through an admin panel.
 
 The defining constraint: **a generated quote is a permanent quote.** Once created it never changes, even if the admin later edits percentages, blacklist entries, or contract instructions.
 
-The developer (site owner) will personally maintain and extend this codebase long-term, so clean code, SOLID principles, and DDD-flavored structure are the top priority — not just a working prototype.
 
-## 2. Tech Stack
+## Tech Stack
 
 - **Django** (Python), server-rendered templates + **HTMX** for interactivity (no SPA/JS framework)
 - **PostgreSQL**
 - **django-unfold** for a modern admin UI skin (keeps Django admin's built-in auth/permissions/CSRF, just re-styled)
 - **Docker Compose**: `web` (Django + Gunicorn) and `db` (Postgres). No Celery/Redis — the one external call (Janice) runs synchronously inside the request that generates a quote.
 
-## 3. The Janice API (verified)
+## The Janice API (verified)
 
 Verified against `https://janice.e-351.com/api/rest/v2/swagger.json`. This section records what the integration actually depends on.
 
@@ -39,7 +38,7 @@ Verified against `https://janice.e-351.com/api/rest/v2/swagger.json`. This secti
 
 `GET /api/rest/v2/appraisal/{code}` exists, but we never call it at render time — our page is built entirely from our own stored quote. If Janice ever prunes old appraisals, the cross-link may 404 while our page stays correct.
 
-## 4. Architecture
+## Architecture
 
 Four Django apps, each a bounded context:
 
@@ -52,7 +51,7 @@ Four Django apps, each a bounded context:
 
 **Dependency inversion at the one external boundary:** the `buyback` domain depends on a `PriceAppraisalGateway` port, with `JaniceAppraisalGateway` as the concrete adapter. If Janice's API changes, or a second price source is ever needed, only the adapter changes.
 
-## 5. Domain Model
+## Domain Model
 
 ### `catalog`
 - `EveCategory` (id, name) — e.g. Ship, Module, Drone
@@ -117,7 +116,7 @@ Config: Ship default 80% · CustomRule "Battleships" → group Battleship, 70% �
 
 All monetary and percentage values are `Decimal`, never float. `line_total = round(unit_price * quantity * percent, 2)` using `ROUND_HALF_UP`; the grand total is the sum of the already-rounded line totals, so the displayed lines always add up to the displayed total. Flagged items contribute `0`.
 
-## 6. Data Flow (seller journey)
+## Data Flow (seller journey)
 
 One step — submitting the paste generates the permanent page directly.
 
@@ -129,7 +128,7 @@ One step — submitting the paste generates the permanent page directly.
 
 If Janice returns no parseable items at all, no quote is created and the form shows an error.
 
-## 7. Admin Capabilities
+## Admin Capabilities
 
 Django admin skinned with django-unfold:
 
@@ -143,7 +142,7 @@ Django admin skinned with django-unfold:
 
 The Janice API key is **not** here — it's an environment variable (§9).
 
-## 8. Error Handling & Edge Cases
+## Error Handling & Edge Cases
 
 - **Janice API failure/timeout** — inline error on the form, nothing persisted, seller retries. No partial quotes.
 - **Empty paste** — validated before any API call.
@@ -153,7 +152,26 @@ The Janice API key is **not** here — it's an environment variable (§9).
 - **Rate limiting** — the submit endpoint is public and unauthenticated, and under one-step generation *every* submission consumes Janice API quota (the key is issued personally and tracked to prevent excessive traffic) and creates a permanent row on both sides. A per-IP rate limit on that endpoint is required, not optional.
 - **Code collision** — Janice codes are unique; PK uniqueness enforces it anyway.
 
-## 9. Testing & Deployment
+## Catalog seeding
+
+`catalog` is populated from [EVERef](https://everef.net) by the `seed_catalog`
+management command. It is manual by design, not a scheduled sync — EVE's
+taxonomy rarely changes and the command is idempotent, so re-run it when CCP
+publishes new items.
+
+Two properties of the dataset shape the implementation:
+
+- **`types.json` is ~229 MB** (52,865 records). It is streamed with `ijson`
+  rather than loaded into memory; the whole file parses in a couple of seconds
+  at ~19 MB peak RSS. `categories.json` and `groups.json` are small enough to
+  load normally.
+- **Filtering on `published` breaks referential integrity.** 46 published groups
+  belong to unpublished categories, and 158 published types belong to
+  unpublished groups. The command therefore imports *all* categories and groups
+  (both tiny tables) and filters `published` only on types, which yields ~27,000
+  types with no dangling foreign keys.
+
+## Testing & Deployment
 
 - Domain logic (`resolve_price`, overlap validation, quote assembly, money rounding) is plain Python — unit tested with no database or network. The worked-examples table in §5 is the starting test suite.
 - The Janice gateway is tested against a stub implementation of the port. A real-API integration test exists but is excluded from the default fast suite.
