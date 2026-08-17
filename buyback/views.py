@@ -84,6 +84,8 @@ def submit(request):
 
 def quote(request, code):
     instance = get_object_or_404(
-        Quote.objects.prefetch_related("items"), pk=code
+        # items__materials as well, or a quote with many reprocessed lines
+        # issues one query per line to render its breakdown.
+        Quote.objects.prefetch_related("items__materials"), pk=code
     )
     return render(request, "buyback/quote.html", {"quote": instance})
