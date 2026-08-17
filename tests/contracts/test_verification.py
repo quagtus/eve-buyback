@@ -102,3 +102,117 @@ def test_the_delta_is_exact_at_a_scale_that_would_break_a_float():
 
     assert verdict.price_delta == Decimal("0.00")
     assert verdict.is_acceptable
+
+
+def test_a_missing_item_is_a_problem_with_a_diff():
+    verdict = run(items=())
+
+    assert Problem.ITEM_MISSING in verdict.problems
+    assert verdict.item_diffs == (
+        ItemDiff(type_id=34, quote_quantity=1000, contract_quantity=0),
+    )
+
+
+def test_an_extra_item_is_a_problem():
+    verdict = run(
+        items=(
+            ContractItemLine(type_id=34, quantity=1000, is_included=True, is_singleton=False),
+            ContractItemLine(type_id=638, quantity=1, is_included=True, is_singleton=False),
+        )
+    )
+
+    assert Problem.ITEM_EXTRA in verdict.problems
+    assert ItemDiff(type_id=638, quote_quantity=0, contract_quantity=1) in verdict.item_diffs
+
+
+def test_a_quantity_mismatch_is_a_problem():
+    verdict = run(
+        items=(
+            ContractItemLine(type_id=34, quantity=999, is_included=True, is_singleton=False),
+        )
+    )
+
+    assert Problem.QUANTITY_MISMATCH in verdict.problems
+    assert verdict.item_diffs == (
+        ItemDiff(type_id=34, quote_quantity=1000, contract_quantity=999),
+    )
+
+
+def test_the_same_type_in_several_stacks_is_summed():
+    """A contract can carry one type as several stacks; the quote has one line."""
+    verdict = run(
+        items=(
+            ContractItemLine(type_id=34, quantity=600, is_included=True, is_singleton=False),
+            ContractItemLine(type_id=34, quantity=400, is_included=True, is_singleton=False),
+        )
+    )
+
+    assert verdict.is_acceptable
+    assert verdict.item_diffs == ()
+
+
+def test_a_requested_item_is_a_problem_and_does_not_count_as_offered():
+    """is_included false means the seller is demanding that item from us.
+
+    It must not be able to satisfy a quote line, or a contract that hands over
+    nothing and asks for 1000 Tritanium would read as an exact match.
+    """
+    verdict = run(
+        items=(
+            ContractItemLine(type_id=34, quantity=1000, is_included=False, is_singleton=False),
+        )
+    )
+
+    assert not verdict.is_acceptable
+    assert Problem.ITEMS_REQUESTED in verdict.problems
+    assert Problem.ITEM_MISSING in verdict.problems
+
+
+def test_assembled_items_are_an_advisory_not_a_problem():
+    """Janice priced the item packaged; an assembled one may be damaged or fitted."""
+    verdict = run(
+        quote=make_quote(lines=(QuoteLine(type_id=638, quantity=1),)),
+        items=(
+            ContractItemLine(type_id=638, quantity=1, is_included=True, is_singleton=True),
+        ),
+    )
+
+    assert verdict.is_acceptable
+    assert Advisory.ASSEMBLED_ITEMS in verdict.advisories
+
+
+def test_unparseable_quote_lines_are_ignored():
+    """QuoteItem.type_id is null for a paste line Janice could not price.
+
+    Those lines are always flagged and zero-valued, so they were never part of
+    the offer. Requiring them would make every quote containing a typo
+    impossible to fulfil.
+    """
+    verdict = run(
+        quote=make_quote(
+            lines=(
+                QuoteLine(type_id=34, quantity=1000),
+                QuoteLine(type_id=None, quantity=1),
+            )
+        )
+    )
+
+    assert verdict.is_acceptable
+    assert verdict.item_diffs == ()
+
+
+def test_each_item_problem_is_reported_once_however_many_types_hit_it():
+    """Three missing types are one ITEM_MISSING problem and three diffs."""
+    verdict = run(
+        quote=make_quote(
+            lines=(
+                QuoteLine(type_id=34, quantity=1),
+                QuoteLine(type_id=35, quantity=1),
+                QuoteLine(type_id=36, quantity=1),
+            )
+        ),
+        items=(),
+    )
+
+    assert verdict.problems.count(Problem.ITEM_MISSING) == 1
+    assert len(verdict.item_diffs) == 3
