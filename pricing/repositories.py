@@ -3,8 +3,15 @@
 Loaded once per quote so resolution never touches the ORM per item.
 """
 
+from pricing.domain.ruleset import ReprocessingRule as DomainReprocessingRule
 from pricing.domain.ruleset import Rule, RuleSet
-from pricing.models import BlacklistEntry, CategoryDefaultPercent, CustomRule, SaleRule
+from pricing.models import (
+    BlacklistEntry,
+    CategoryDefaultPercent,
+    CustomRule,
+    ReprocessingRule,
+    SaleRule,
+)
 
 
 def to_domain_rule(instance) -> Rule:
@@ -17,7 +24,7 @@ def to_domain_rule(instance) -> Rule:
     """
     return Rule(
         label=instance.label,
-        percent=instance.percent,
+        percent=getattr(instance, "percent", 0),
         category_ids=frozenset(c.id for c in instance.categories.all()),
         group_ids=frozenset(g.id for g in instance.groups.all()),
         type_ids=frozenset(t.id for t in instance.types.all()),
@@ -26,11 +33,29 @@ def to_domain_rule(instance) -> Rule:
     )
 
 
+def to_domain_reprocessing_rule(instance) -> DomainReprocessingRule:
+    """Map a ReprocessingRule model instance to its domain counterpart.
+
+    Separate from to_domain_rule because the carried value differs: a yield
+    fraction rather than percentage points.
+    """
+    return DomainReprocessingRule(
+        label=instance.label,
+        yield_rate=instance.yield_rate,
+        category_ids=frozenset(c.id for c in instance.categories.all()),
+        group_ids=frozenset(g.id for g in instance.groups.all()),
+        type_ids=frozenset(t.id for t in instance.types.all()),
+    )
+
+
 def load_ruleset() -> RuleSet:
     entries = list(BlacklistEntry.objects.all())
 
     custom = CustomRule.objects.prefetch_related("categories", "groups", "types")
     sales = SaleRule.objects.prefetch_related("categories", "groups", "types")
+    reprocessing = ReprocessingRule.objects.prefetch_related(
+        "categories", "groups", "types"
+    )
 
     return RuleSet(
         blacklist_category_ids=frozenset(
@@ -44,6 +69,9 @@ def load_ruleset() -> RuleSet:
         ),
         sales=tuple(to_domain_rule(rule) for rule in sales),
         custom_rules=tuple(to_domain_rule(rule) for rule in custom),
+        reprocessing_rules=tuple(
+            to_domain_reprocessing_rule(rule) for rule in reprocessing
+        ),
         category_defaults={
             row.category_id: row.percent
             for row in CategoryDefaultPercent.objects.all()

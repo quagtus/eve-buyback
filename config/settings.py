@@ -212,6 +212,7 @@ UNFOLD = {
                     {"title": "Custom rules", "link": "/admin/pricing/customrule/"},
                     {"title": "Sales", "link": "/admin/pricing/salerule/"},
                     {"title": "Blacklist", "link": "/admin/pricing/blacklistentry/"},
+                    {"title": "Reprocessing", "link": "/admin/pricing/reprocessingrule/"},
                     {"title": "Rule summary", "link": "/admin/pricing/summary/"},
                 ],
             },

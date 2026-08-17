@@ -4,7 +4,13 @@ from unfold.admin import ModelAdmin
 
 from pricing.domain.overlap import find_conflicts
 from pricing.domain.ruleset import Rule
-from pricing.models import BlacklistEntry, CategoryDefaultPercent, CustomRule, SaleRule
+from pricing.models import (
+    BlacklistEntry,
+    CategoryDefaultPercent,
+    CustomRule,
+    ReprocessingRule,
+    SaleRule,
+)
 from pricing.repositories import to_domain_rule
 
 
@@ -22,6 +28,8 @@ class TargetedRuleForm(forms.ModelForm):
 
         candidate = Rule(
             label=cleaned.get("label") or "",
+            # ReprocessingRule has no percent; only the targets matter for
+            # overlap detection, and the value is used solely as a tie-break.
             percent=cleaned.get("percent") or 0,
             category_ids=frozenset(o.id for o in cleaned.get("categories", [])),
             group_ids=frozenset(o.id for o in cleaned.get("groups", [])),
@@ -94,3 +102,17 @@ class BlacklistEntryAdmin(ModelAdmin):
     list_display = ["__str__", "category", "group", "type"]
     autocomplete_fields = ["category", "group", "type"]
     list_select_related = ["category", "group", "type"]
+
+
+class ReprocessingRuleForm(TargetedRuleForm):
+    class Meta:
+        model = ReprocessingRule
+        fields = ["label", "yield_rate", "categories", "groups", "types"]
+
+
+@admin.register(ReprocessingRule)
+class ReprocessingRuleAdmin(ModelAdmin):
+    form = ReprocessingRuleForm
+    list_display = ["label", "yield_rate"]
+    search_fields = ["label"]
+    autocomplete_fields = ["categories", "groups", "types"]
