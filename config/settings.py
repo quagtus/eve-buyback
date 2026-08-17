@@ -204,6 +204,12 @@ UNFOLD = {
                     {"title": "Settings", "link": "/admin/siteconfig/siteconfig/"},
                 ],
             },
+            {
+                "title": "Contracts",
+                "items": [
+                    {"title": "Contract check", "link": "/admin/contracts/check/"},
+                ],
+            },
         ],
     },
     "COLORS": {
