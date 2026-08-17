@@ -6,10 +6,17 @@ match level so the winning rule is obvious.
 """
 
 from datetime import datetime
+from decimal import Decimal
 
 from django.shortcuts import render
 
-from pricing.models import BlacklistEntry, CategoryDefaultPercent, CustomRule, SaleRule
+from pricing.models import (
+    BlacklistEntry,
+    CategoryDefaultPercent,
+    CustomRule,
+    ReprocessingRule,
+    SaleRule,
+)
 
 LEVEL_ORDER = {"Type": 0, "Group": 1, "Category": 2}
 
@@ -20,6 +27,7 @@ KIND_ICONS = {
     "Sale": "tag",
     "Custom rule": "sliders",
     "Category default": "layers",
+    "Reprocessing": "recycle",
 }
 
 
@@ -56,6 +64,23 @@ def build_summary_rows(now: datetime) -> list[dict]:
                 "percent": sale.percent,
                 "status": _sale_status(sale, now),
                 "window": f"{sale.valid_from:%Y-%m-%d} to {sale.valid_to:%Y-%m-%d}",
+            })
+
+    for rule in ReprocessingRule.objects.prefetch_related(
+        "categories", "groups", "types"
+    ):
+        for level, names in _targets(rule):
+            rows.append({
+                "kind": "Reprocessing",
+                "label": rule.label,
+                "level": level,
+                "targets": names,
+                # Scaled to a percentage because the template renders this cell
+                # as "{{ row.percent|num_fmt }}%". A yield of 0.9063 is 90.63%
+                # recovery; passing the raw fraction would render "0.9063%".
+                "percent": rule.yield_rate * Decimal("100"),
+                "status": "active",
+                "window": "",
             })
 
     for rule in CustomRule.objects.prefetch_related("categories", "groups", "types"):
@@ -97,7 +122,13 @@ def build_summary_rows(now: datetime) -> list[dict]:
     for row in rows:
         row["icon"] = KIND_ICONS[row["kind"]]
 
-    kind_order = {"Blacklist": 0, "Sale": 1, "Custom rule": 2, "Category default": 3}
+    kind_order = {
+        "Blacklist": 0,
+        "Sale": 1,
+        "Custom rule": 2,
+        "Reprocessing": 3,
+        "Category default": 4,
+    }
     rows.sort(key=lambda r: (kind_order[r["kind"]], LEVEL_ORDER[r["level"]], r["label"]))
     return rows
 
