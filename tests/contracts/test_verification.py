@@ -14,7 +14,7 @@ from contracts.domain.contract import (
     QuoteSnapshot,
 )
 from contracts.domain.verdict import Advisory, ItemDiff, Problem
-from contracts.domain.verification import verify
+from contracts.domain.verification import verify, verify_all
 
 OPERATOR_ID = 1111
 SELLER_ID = 2222
@@ -216,3 +216,126 @@ def test_each_item_problem_is_reported_once_however_many_types_hit_it():
 
     assert verdict.problems.count(Problem.ITEM_MISSING) == 1
     assert len(verdict.item_diffs) == 3
+
+
+def test_a_contract_with_no_matching_quote_is_a_problem():
+    verdict = verify(
+        make_contract(title="not-a-quote-code"),
+        None,
+        (),
+        character_id=OPERATOR_ID,
+    )
+
+    assert verdict.problems == (Problem.NO_MATCHING_QUOTE,)
+    assert verdict.quote_code is None
+    assert verdict.price_delta is None
+
+
+def test_contract_level_problems_are_reported_even_without_a_quote():
+    """A courier contract from a stranger must still say it is the wrong type."""
+    verdict = verify(
+        make_contract(title="not-a-quote-code", contract_type="courier"),
+        None,
+        (),
+        character_id=OPERATOR_ID,
+    )
+
+    assert Problem.WRONG_CONTRACT_TYPE in verdict.problems
+    assert Problem.NO_MATCHING_QUOTE in verdict.problems
+
+
+def test_a_non_item_exchange_contract_is_a_problem():
+    verdict = run(contract=make_contract(contract_type="auction"))
+
+    assert Problem.WRONG_CONTRACT_TYPE in verdict.problems
+
+
+def test_a_contract_assigned_to_someone_else_is_a_problem():
+    """In practice this means assigned to the operator's corporation."""
+    verdict = run(contract=make_contract(assignee_id=9999))
+
+    assert Problem.ASSIGNED_ELSEWHERE in verdict.problems
+
+
+def test_a_contract_issued_after_the_quote_window_is_stale():
+    verdict = run(
+        quote=make_quote(created_at=ISSUED - timedelta(days=4), contract_days=3)
+    )
+
+    assert verdict.is_acceptable
+    assert Advisory.QUOTE_STALE in verdict.advisories
+
+
+def test_a_contract_issued_inside_the_quote_window_is_not_stale():
+    verdict = run(
+        quote=make_quote(created_at=ISSUED - timedelta(days=2), contract_days=3)
+    )
+
+    assert Advisory.QUOTE_STALE not in verdict.advisories
+
+
+def test_verify_all_flags_two_contracts_citing_the_same_quote_code():
+    """A seller could contract the same quote twice and be paid twice."""
+    first = make_contract(contract_id=1)
+    second = make_contract(contract_id=2)
+    quote = make_quote()
+
+    verdicts = verify_all(
+        (first, second),
+        {quote.code: quote},
+        {1: make_items(), 2: make_items()},
+        character_id=OPERATOR_ID,
+    )
+
+    assert len(verdicts) == 2
+    for verdict in verdicts:
+        assert Problem.DUPLICATE_QUOTE_CODE in verdict.problems
+        assert not verdict.is_acceptable
+
+
+def test_verify_all_does_not_flag_unmatched_titles_as_duplicates():
+    """Two unrelated contracts with blank descriptions are not duplicates."""
+    verdicts = verify_all(
+        (make_contract(contract_id=1, title=""), make_contract(contract_id=2, title="")),
+        {},
+        {},
+        character_id=OPERATOR_ID,
+    )
+
+    for verdict in verdicts:
+        assert Problem.DUPLICATE_QUOTE_CODE not in verdict.problems
+        assert Problem.NO_MATCHING_QUOTE in verdict.problems
+
+
+def test_verify_all_puts_acceptable_contracts_first_then_newest():
+    # Distinct codes, or the duplicate check would correctly reject both and
+    # there would be nothing acceptable left to sort.
+    old_quote = make_quote(code="OLDER1")
+    new_quote = make_quote(code="NEWER1")
+    ready_old = make_contract(
+        contract_id=1, title="OLDER1", date_issued=ISSUED - timedelta(days=2)
+    )
+    ready_new = make_contract(contract_id=2, title="NEWER1", date_issued=ISSUED)
+    broken = make_contract(contract_id=3, title="unknown", date_issued=ISSUED)
+
+    verdicts = verify_all(
+        (broken, ready_old, ready_new),
+        {old_quote.code: old_quote, new_quote.code: new_quote},
+        {1: make_items(), 2: make_items()},
+        character_id=OPERATOR_ID,
+    )
+
+    assert [v.is_acceptable for v in verdicts] == [True, True, False]
+    assert [v.contract.contract_id for v in verdicts] == [2, 1, 3]
+
+
+def test_verify_all_matches_a_title_with_surrounding_whitespace():
+    quote = make_quote()
+    contract = make_contract(contract_id=1, title=" 4ovArs ")
+
+    verdicts = verify_all(
+        (contract,), {quote.code: quote}, {1: make_items()}, character_id=OPERATOR_ID
+    )
+
+    assert verdicts[0].is_acceptable
+    assert verdicts[0].quote_code == "4ovArs"
