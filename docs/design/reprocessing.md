@@ -344,3 +344,10 @@ Integration:
 - **Ore variations are not used.** `ore_variations` groups the variant families,
   which would allow "all Veldspar variants" as one target. Types and groups cover
   the need today.
+
+## Operational note
+
+Reprocessing yields arrive with `seed_catalog`. A deployment that seeded before
+this feature has `portion_size` defaulted to 1 and no `EveTypeMaterial` rows, so
+every reprocessing rule would flag its lines as having no outputs. Re-run
+`manage.py seed_catalog` after upgrading; it is idempotent.

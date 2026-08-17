@@ -38,6 +38,20 @@ Overlapping rules at the same level are rejected when you save them, so the
 outcome is always unambiguous. The admin has a **rule summary** page showing
 every rule in one list, ordered by precedence.
 
+### Pricing ore by what it reprocesses into
+
+A **Reprocessing** rule marks items to be valued from their reprocessing output
+instead of their own market price. It targets categories, groups or types like any
+other rule, and carries a yield rate — `0.9063` for 90.63% recovery.
+
+Each recovered material is then priced by its *own* percentage rule, so you
+control ore payouts by setting mineral rates. Ore and ice use different
+reprocessing skills in EVE, so they normally want separate rules: Ice is a group
+inside the Asteroid category, and a group rule beats a category one.
+
+The quote page shows the full breakdown, including any material you have no rule
+for — those are listed but not paid.
+
 ## Checking contracts
 
 Sellers put the quote code in the contract description. The admin page at
