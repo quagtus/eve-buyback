@@ -82,9 +82,42 @@ class QuoteItem(models.Model):
         max_length=32, null=True, blank=True,
         help_text="Machine key for why the line was rejected. Translated at render.",
     )
+    # Frozen for reprocessed lines only; null on every market-priced line.
+    # Without these, editing a ReprocessingRule would change what an existing
+    # quote claims it was priced at, and the quote page promises otherwise.
+    yield_rate_applied = models.DecimalField(
+        max_digits=5, decimal_places=4, null=True, blank=True
+    )
+    portion_size_applied = models.PositiveIntegerField(null=True, blank=True)
 
     class Meta:
         ordering = ["id"]
+
+    def __str__(self):
+        return f"{self.type_name} x{self.quantity}"
+
+
+class QuoteItemMaterial(models.Model):
+    """One reprocessing output of a quote line, frozen at generation time.
+
+    is_unpriced marks a material with no configured rule. It contributes nothing
+    but is still stored and displayed, so a forgotten mineral rule shows up as a
+    visible gap rather than a silently smaller quote.
+    """
+
+    quote_item = models.ForeignKey(
+        QuoteItem, on_delete=models.CASCADE, related_name="materials"
+    )
+    type_id = models.BigIntegerField()
+    type_name = models.CharField(max_length=255)
+    quantity = models.BigIntegerField()
+    unit_price = models.DecimalField(max_digits=20, decimal_places=2)
+    percent_applied = models.DecimalField(max_digits=6, decimal_places=2)
+    line_total = models.DecimalField(max_digits=20, decimal_places=2)
+    is_unpriced = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["-line_total", "type_name"]
 
     def __str__(self):
         return f"{self.type_name} x{self.quantity}"
