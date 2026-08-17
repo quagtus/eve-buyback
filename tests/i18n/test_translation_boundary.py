@@ -78,11 +78,15 @@ def test_eve_item_names_are_never_translated_on_the_quote_page():
         client.cookies["django_language"] = "eo"
         body = client.get("/q/I18NTEST/").content.decode()
 
-    # EVE data and the operator's rule name survive verbatim...
+    # EVE data survives verbatim...
     assert "Raven" in body
-    assert "Raven Special" in body
-    # ...while buyback's own label is translated.
+    # ...while buyback's own system label is translated. flag_reason_label is
+    # the remaining place the boundary is observable on this page: the Source
+    # column that rendered price_source_label was removed from the design, so
+    # the operator's rule name no longer appears here. That half of the rule is
+    # still covered directly by test_rule_name_is_identical_in_every_locale.
     assert "Malpermesita" in body
+    assert "BLACKLISTED" not in body, "raw key leaked instead of a translated label"
 
 
 @pytest.mark.django_db

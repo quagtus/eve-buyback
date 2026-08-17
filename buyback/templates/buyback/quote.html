@@ -96,6 +96,7 @@
       </div>
     {% endif %}
   {% endif %}
+  <br>
   <div class="eve-frame bg-border-token p-px">
     <div class="eve-fill bg-surface-raised">
       <div class="flex flex-wrap items-baseline justify-between gap-2 border-b border-border-token/60 px-4 py-2">
@@ -120,7 +121,6 @@
               <th class="px-3 py-1.5 text-right text-[11px] font-semibold uppercase tracking-wider text-text-muted">{% translate "Qty" %}</th>
               <th class="px-3 py-1.5 text-right text-[11px] font-semibold uppercase tracking-wider text-text-muted">{% translate "Unit price" %}</th>
               <th class="px-3 py-1.5 text-right text-[11px] font-semibold uppercase tracking-wider text-text-muted">{% translate "Rate" %}</th>
-              <th class="px-3 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wider text-text-muted">{% translate "Source" %}</th>
               <th class="px-3 py-1.5 text-right text-[11px] font-semibold uppercase tracking-wider text-text-muted">{% translate "Total" %}</th>
             </tr>
           </thead>
@@ -128,16 +128,24 @@
             {% for item in quote.items.all %}
               <tr class="border-t border-border-token/40 {% if item.is_flagged %}bg-danger-surface{% endif %}">
                 <td class="px-3 py-1.5 {% if item.is_flagged %}text-danger{% endif %}">
-                  {{ item.type_name }}
+                <div class="flex items-center gap-2">
+                <img src="https://images.evetech.net/types/{{ item.type_id }}/icon?size=32" alt="" class="inline-block h-10 w-10 align-middle">
+                  {{ item.type_name }}<a href="https://janice.e-351.com/i/{{ item.type_id }}" target="_blank" rel="noopener" class="info-link">
+                  <span role="img" aria-label="info-circle" class="anticon anticon-info-circle">
+                      <svg viewBox="64 64 896 896" focusable="false" data-icon="info-circle" width="1em" height="1em" fill="currentColor" aria-hidden="true">
+                      <path d="M512 64C264.6 64 64 264.6 64 512s200.6 448 448 448 448-200.6 448-448S759.4 64 512 64zm0 820c-205.4 0-372-166.6-372-372s166.6-372 372-372 372 166.6 372 372-166.6 372-372 372z"></path>
+                      <path d="M464 336a48 48 0 1096 0 48 48 0 10-96 0zm72 112h-48c-4.4 0-8 3.6-8 8v272c0 4.4 3.6 8 8 8h48c4.4 0 8-3.6 8-8V456c0-4.4-3.6-8-8-8z"></path></svg>
+                      </span></a>
                   {% if item.is_flagged %}
                     <div class="text-[11px] uppercase tracking-wider">{{ item|flag_reason_label }}</div>
                   {% endif %}
+                </div>
                 </td>
+                  
                 <td class="px-3 py-1.5 text-right font-mono tabular-nums">{{ item.quantity|num_fmt }}</td>
-                <td class="px-3 py-1.5 text-right font-mono tabular-nums">{{ item.unit_price|num_fmt }}</td>
+                <td class="px-3 py-1.5 text-right font-mono tabular-nums">{{ item.unit_price|isk }}</td>
                 <td class="px-3 py-1.5 text-right font-mono tabular-nums">{{ item.percent_applied }}%</td>
-                <td class="px-3 py-1.5 text-xs text-text-muted">{{ item|price_source_label }}</td>
-                <td class="px-3 py-1.5 text-right font-mono tabular-nums">{{ item.line_total|num_fmt }}</td>
+                <td class="px-3 py-1.5 text-right font-mono tabular-nums">{{ item.line_total|isk }}</td>
               </tr>
             {% endfor %}
           </tbody>

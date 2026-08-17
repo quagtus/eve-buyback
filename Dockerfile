@@ -14,9 +14,16 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Tailwind standalone CLI — no Node required. Pinned; do not track "latest".
 ARG TAILWIND_VERSION=v4.3.3
-RUN curl -sL -o /usr/local/bin/tailwindcss \
+# --fail makes an HTTP error a non-zero exit instead of writing the error body
+# to the binary path; --retry rides out transient GitHub/CDN failures. Without
+# these, a partial or failed download is chmod'd executable and only surfaces
+# later as an inscrutable "exit code: 126" from the build step below.
+# The final --help both proves the binary runs and pins the failure to this line.
+RUN curl -fsSL --retry 3 --retry-delay 2 --retry-all-errors \
+      -o /usr/local/bin/tailwindcss \
       "https://github.com/tailwindlabs/tailwindcss/releases/download/${TAILWIND_VERSION}/tailwindcss-linux-x64" \
-    && chmod +x /usr/local/bin/tailwindcss
+    && chmod +x /usr/local/bin/tailwindcss \
+    && tailwindcss --help >/dev/null
 
 COPY . .
 

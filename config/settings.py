@@ -5,7 +5,36 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "insecure-dev-key")
 DEBUG = os.environ.get("DJANGO_DEBUG", "0") == "1"
-ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+
+
+def _csv_env(name, default=""):
+    """Split a comma-separated env var, dropping blanks and stray whitespace."""
+    return [item.strip() for item in os.environ.get(name, default).split(",") if item.strip()]
+
+
+ALLOWED_HOSTS = _csv_env("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
+
+# Django 4+ requires the SCHEME here, not a bare hostname: "https://buyback.example.com",
+# not "buyback.example.com". A bare hostname raises ImproperlyConfigured at startup,
+# and omitting the origin entirely is what produces "CSRF verification failed —
+# Origin checking failed" on a POST from a deployed domain.
+CSRF_TRUSTED_ORIGINS = _csv_env("DJANGO_CSRF_TRUSTED_ORIGINS")
+
+# Behind a reverse proxy terminating TLS, Django sees http:// on the inbound
+# request and will reject an https:// Origin as a mismatch. This tells it to
+# trust the proxy's forwarded scheme.
+#
+# Only enable it when a proxy is genuinely in front: if the app is reachable
+# directly, a client can forge this header and Django would believe an
+# unencrypted request was secure.
+if os.environ.get("DJANGO_BEHIND_TLS_PROXY", "0") == "1":
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# Cookie flags follow the same switch: marking cookies Secure over plain HTTP
+# makes them undeliverable, which would lock you out of the admin in dev.
+_HTTPS = os.environ.get("DJANGO_SECURE_COOKIES", "0") == "1"
+SESSION_COOKIE_SECURE = _HTTPS
+CSRF_COOKIE_SECURE = _HTTPS
 
 INSTALLED_APPS = [
     "unfold",
