@@ -381,3 +381,27 @@ unconfigured page rendering a panel instead of a 500.
 - **Nothing is remembered between checks**, so a contract accepted last week and
   a quote fulfilled twice on different days are both invisible. Same-check
   duplicates are caught by `DUPLICATE_QUOTE_CODE`.
+
+## Troubleshooting the SSO round trip
+
+Two failures cost real debugging time during development, both reported by CCP in
+ways that pointed away from the cause.
+
+**`SSO rejected the request:` followed by HTML.** The token endpoint answers a 401
+from wrong client credentials with the SSO login page, not a JSON error. Verified
+against the live endpoint. `_error_from` now detects an HTML body and names
+`ESI_CLIENT_ID` / `ESI_CLIENT_SECRET` instead of echoing the markup. The original
+cause was `ESI_CLIENT_SECRET` holding the callback URL.
+
+**`The requested '<scope>' scope is not valid`.** The scope must be selected on
+the application at developers.eveonline.com; requesting one the application does
+not carry produces this, whatever the string. An application registered with no
+scopes rejects every scope. `ESI_SCOPES` exists so an operator can try a
+different value without editing Python, but the fix is almost always on CCP's
+side.
+
+The scope is `esi-contracts.read_character_contracts.v1`. The similarly named
+`esi-characters.read_contacts.v1` is the address book — it grants
+`/characters/{id}/contacts`, `/contacts/labels` and `/cspa`, and none of them are
+contracts. A `test_the_default_requested_scope_is_the_contracts_scope` test pins
+the distinction.

@@ -55,6 +55,7 @@ def build_sso() -> EveSso:
         client_secret=settings.ESI_CLIENT_SECRET,
         callback_url=settings.ESI_CALLBACK_URL,
         user_agent=settings.ESI_USER_AGENT,
+        scopes=settings.ESI_SCOPES,
     )
 
 
@@ -98,19 +99,24 @@ def _revoke_quietly(sso: EveSso, cipher: TokenCipher, ciphertext: str) -> None:
         pass
 
 
-def link_character(*, code: str, code_verifier: str) -> EsiCharacter:
-    sso = build_sso()
+def link_character(
+    *, code: str, code_verifier: str, sso=None, validator=None, cipher=None
+) -> EsiCharacter:
+    sso = sso or build_sso()
     # Built first: a missing or malformed ESI_TOKEN_KEY should fail before the
     # authorization code is spent, because a code cannot be reused.
-    cipher = build_cipher()
+    cipher = cipher or build_cipher()
 
     tokens = sso.exchange_code(code, code_verifier)
-    identity = build_validator().identity(tokens.access_token)
+    identity = (validator or build_validator()).identity(tokens.access_token)
 
     if CONTRACTS_SCOPE not in identity.scopes:
+        # Usually the application itself was registered without the scope, in
+        # which case SSO never offered it and no amount of re-authorising helps.
         raise MissingScopeError(
-            f"The login did not grant {CONTRACTS_SCOPE}. Authorise again and "
-            "accept the contracts permission."
+            f"The login granted {', '.join(identity.scopes) or 'no scopes'}, but "
+            f"reading contracts needs {CONTRACTS_SCOPE}. Add that scope to your "
+            "application at developers.eveonline.com, save it, then connect again."
         )
 
     character = EsiCharacter.current() or EsiCharacter()

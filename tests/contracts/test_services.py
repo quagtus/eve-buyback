@@ -17,9 +17,19 @@ from contracts.domain.contract import ContractItemLine, ContractSnapshot
 from contracts.domain.gateway import ContractSourceError
 from contracts.domain.verdict import Advisory, Problem
 from contracts.infrastructure.crypto import TokenCipher, TokenCipherError
-from contracts.infrastructure.sso import TokenPair, TokenRejected
+from contracts.infrastructure.sso import (
+    CONTRACTS_SCOPE,
+    CharacterIdentity,
+    TokenPair,
+    TokenRejected,
+)
 from contracts.models import EsiCharacter
-from contracts.services import NotLinkedError, run_check
+from contracts.services import (
+    MissingScopeError,
+    NotLinkedError,
+    link_character,
+    run_check,
+)
 
 CHARACTER_ID = 1111
 SELLER_ID = 2222
@@ -289,3 +299,94 @@ def test_a_successful_check_records_when_it_ran_and_clears_the_error(linked, quo
     assert reloaded.last_checked_at is not None
     assert reloaded.last_error == ""
     assert result.checked_at == reloaded.last_checked_at
+
+
+class FakeLinkSso:
+    """Exchange half of the SSO client, for the link path."""
+
+    def __init__(self):
+        self.revoked = []
+
+    def exchange_code(self, code, code_verifier):
+        return TokenPair(access_token="access-1", refresh_token="refresh-1")
+
+    def revoke(self, refresh_token):
+        self.revoked.append(refresh_token)
+
+
+class FakeValidator:
+    def __init__(self, *, scopes, character_id=CHARACTER_ID, name="Operator"):
+        self._identity = CharacterIdentity(
+            character_id=character_id, character_name=name, scopes=scopes
+        )
+
+    def identity(self, access_token):
+        return self._identity
+
+
+def link(scopes, **kwargs):
+    with override_settings(ESI_TOKEN_KEY=KEY):
+        return link_character(
+            code="the-code",
+            code_verifier="the-verifier",
+            sso=kwargs.pop("sso", None) or FakeLinkSso(),
+            validator=FakeValidator(scopes=scopes, **kwargs),
+            cipher=TokenCipher(KEY),
+        )
+
+
+@pytest.mark.django_db
+def test_linking_stores_the_character_and_encrypts_the_token():
+    character = link((CONTRACTS_SCOPE,))
+
+    assert character.character_id == CHARACTER_ID
+    assert character.character_name == "Operator"
+    assert character.is_connected
+    assert TokenCipher(KEY).decrypt(character.refresh_token_ciphertext) == "refresh-1"
+    # The plaintext must not be recoverable from the column itself.
+    assert "refresh-1" not in character.refresh_token_ciphertext
+
+
+@pytest.mark.django_db
+def test_linking_without_the_contracts_scope_is_refused_before_storing_anything():
+    """A token that cannot read contracts is worse than no token: it would link
+    cleanly and then 403 on the first check."""
+    with pytest.raises(MissingScopeError) as exc:
+        link(("esi-characters.read_contacts.v1",))
+
+    message = str(exc.value)
+    assert CONTRACTS_SCOPE in message
+    assert "developers.eveonline.com" in message
+    assert EsiCharacter.current() is None
+
+
+@pytest.mark.django_db
+def test_linking_with_no_scopes_at_all_says_so():
+    with pytest.raises(MissingScopeError) as exc:
+        link(())
+
+    assert "no scopes" in str(exc.value)
+
+
+@pytest.mark.django_db
+def test_linking_a_different_character_revokes_the_previous_token():
+    """Housekeeping: the replaced credential should not stay live at CCP."""
+    link((CONTRACTS_SCOPE,))
+    sso = FakeLinkSso()
+
+    link((CONTRACTS_SCOPE,), sso=sso, character_id=9999, name="Someone Else")
+
+    assert sso.revoked == ["refresh-1"]
+    assert EsiCharacter.objects.count() == 1
+    assert EsiCharacter.current().character_name == "Someone Else"
+
+
+@pytest.mark.django_db
+def test_relinking_the_same_character_does_not_revoke():
+    """Reconnecting the same pilot is a refresh, not a replacement."""
+    link((CONTRACTS_SCOPE,))
+    sso = FakeLinkSso()
+
+    link((CONTRACTS_SCOPE,), sso=sso)
+
+    assert sso.revoked == []

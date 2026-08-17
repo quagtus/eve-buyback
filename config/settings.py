@@ -161,6 +161,15 @@ ESI_CALLBACK_URL = os.environ.get("ESI_CALLBACK_URL", "")
 # string on every ESI call.
 ESI_USER_AGENT = os.environ.get("ESI_USER_AGENT", "eve-buyback")
 
+# Space-separated scopes requested at login. The default is the only scope the
+# contract check needs, and reading contracts is impossible without it.
+#
+# Overridable because SSO answers "The requested '<scope>' scope is not valid"
+# when the scope is not ticked on the application at developers.eveonline.com —
+# an application-registration problem, not a wrong string. Being able to try
+# another value from the environment beats editing Python to find that out.
+ESI_SCOPES = os.environ.get("ESI_SCOPES", "esi-contracts.read_character_contracts.v1")
+
 # Public quote submission rate limit (see Task 17)
 BUYBACK_RATE_LIMIT = os.environ.get("BUYBACK_RATE_LIMIT", "10/h")
 

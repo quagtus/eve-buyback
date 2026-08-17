@@ -20,6 +20,9 @@ TOKEN_URL = "https://login.eveonline.com/v2/oauth/token"
 JWKS_URL = "https://login.eveonline.com/oauth/jwks"
 REVOKE_URL = "https://login.eveonline.com/v2/oauth/revoke"
 
+# The scope GET /characters/{id}/contracts requires, per the security block in
+# https://esi.evetech.net/meta/openapi.json. Not to be confused with
+# esi-characters.read_contacts.v1, which is the address book.
 CONTRACTS_SCOPE = "esi-contracts.read_character_contracts.v1"
 
 TIMEOUT_SECONDS = 20
@@ -102,12 +105,19 @@ def _error_from(response) -> tuple[str, str]:
 
 class EveSso:
     def __init__(
-        self, *, client_id: str, client_secret: str, callback_url: str, user_agent: str
+        self,
+        *,
+        client_id: str,
+        client_secret: str,
+        callback_url: str,
+        user_agent: str,
+        scopes: str = CONTRACTS_SCOPE,
     ):
         self._client_id = client_id
         self._client_secret = client_secret
         self._callback_url = callback_url
         self._user_agent = user_agent
+        self._scopes = scopes
 
     def authorize_url(self, *, state: str, code_challenge: str) -> str:
         query = urlencode(
@@ -115,7 +125,7 @@ class EveSso:
                 "response_type": "code",
                 "redirect_uri": self._callback_url,
                 "client_id": self._client_id,
-                "scope": CONTRACTS_SCOPE,
+                "scope": self._scopes,
                 "state": state,
                 "code_challenge": code_challenge,
                 "code_challenge_method": "S256",

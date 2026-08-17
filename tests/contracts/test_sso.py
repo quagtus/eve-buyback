@@ -263,3 +263,31 @@ def test_a_json_error_description_is_included():
 
     assert "invalid_request" in str(exc.value)
     assert "Invalid redirect_uri" in str(exc.value)
+
+
+def test_the_default_requested_scope_is_the_contracts_scope():
+    """esi-characters.read_contacts.v1 is the address book and grants
+    /characters/{id}/contacts, not /contracts. Guards against the swap."""
+    assert CONTRACTS_SCOPE == "esi-contracts.read_character_contracts.v1"
+
+    url = build_sso().authorize_url(state="s", code_challenge="c")
+
+    assert parse_qs(urlparse(url).query)["scope"] == [CONTRACTS_SCOPE]
+
+
+def test_the_requested_scope_can_be_overridden():
+    """SSO rejects a scope that is not ticked on the application, so trying
+    another value must not require a code change."""
+    sso = EveSso(
+        client_id=CLIENT_ID,
+        client_secret=CLIENT_SECRET,
+        callback_url=CALLBACK,
+        user_agent="eve-buyback tests",
+        scopes="esi-contracts.read_character_contracts.v1 esi-ui.open_window.v1",
+    )
+
+    url = sso.authorize_url(state="s", code_challenge="c")
+
+    assert parse_qs(urlparse(url).query)["scope"] == [
+        "esi-contracts.read_character_contracts.v1 esi-ui.open_window.v1"
+    ]
