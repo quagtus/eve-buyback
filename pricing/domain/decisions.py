@@ -19,6 +19,7 @@ class PriceSourceKind(StrEnum):
     SALE = "SALE"
     CUSTOM = "CUSTOM"
     CATEGORY_DEFAULT = "CATEGORY_DEFAULT"
+    REPROCESSED = "REPROCESSED"
     NONE = "NONE"
 
 
@@ -37,6 +38,8 @@ class FlagReason(StrEnum):
     NO_RULE = "NO_RULE"
     UNRECOGNIZED = "UNRECOGNIZED"
     UNPARSEABLE = "UNPARSEABLE"
+    BELOW_PORTION_SIZE = "BELOW_PORTION_SIZE"
+    ZERO_YIELD = "ZERO_YIELD"
 
 
 @dataclass(frozen=True)
