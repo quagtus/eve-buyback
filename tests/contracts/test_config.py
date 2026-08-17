@@ -38,3 +38,32 @@ def test_all_missing_settings_are_reported_together():
 def test_user_agent_is_not_required():
     """It has a default, so a deployment without it still works."""
     assert "ESI_USER_AGENT" not in REQUIRED_SETTINGS
+
+
+def test_the_compatibility_date_is_pinned_not_tracking_latest():
+    """ESI requires X-Compatibility-Date on every request, and it selects which
+    revision of the API answers. Following whatever is newest would let CCP
+    change response shapes under us — the exact breakage the header prevents."""
+    from django.conf import settings
+
+    assert settings.ESI_COMPATIBILITY_DATE == "2026-08-04"
+
+
+def test_the_gateway_is_built_with_the_configured_compatibility_date():
+    """A setting nothing reads is worse than no setting."""
+    import responses
+
+    from contracts.services import build_gateway
+
+    with override_settings(ESI_COMPATIBILITY_DATE="2025-09-30"):
+        with responses.RequestsMock() as mocked:
+            mocked.add(
+                responses.GET,
+                "https://esi.evetech.net/characters/1/contracts",
+                json=[],
+                status=200,
+            )
+            build_gateway().fetch_contracts(character_id=1, access_token="t")
+            sent = mocked.calls[0].request.headers["X-Compatibility-Date"]
+
+    assert sent == "2025-09-30"

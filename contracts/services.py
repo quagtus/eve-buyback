@@ -63,7 +63,10 @@ def build_validator() -> TokenValidator:
 
 
 def build_gateway() -> EsiContractGateway:
-    return EsiContractGateway(user_agent=settings.ESI_USER_AGENT)
+    return EsiContractGateway(
+        user_agent=settings.ESI_USER_AGENT,
+        compatibility_date=settings.ESI_COMPATIBILITY_DATE,
+    )
 
 
 def build_cipher() -> TokenCipher:

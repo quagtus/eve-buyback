@@ -169,6 +169,16 @@ ESI_USER_AGENT = os.environ.get("ESI_USER_AGENT", "eve-buyback")
 # with the scopes ticked on your application.
 ESI_SCOPES = os.environ.get("ESI_SCOPES", "esi-characters.read_contacts.v1")
 
+# ESI requires an X-Compatibility-Date header on every request. It pins which
+# revision of the API answers, so CCP can change response shapes without
+# breaking existing callers.
+#
+# Pinned on purpose rather than tracking the newest date: an automatic bump is
+# precisely the silent breakage this header exists to prevent. Accepted values
+# are listed at https://esi.evetech.net/meta/compatibility-dates — before moving
+# it forward, re-read the spec for the contracts and universe/names endpoints.
+ESI_COMPATIBILITY_DATE = os.environ.get("ESI_COMPATIBILITY_DATE", "2026-08-04")
+
 # Public quote submission rate limit (see Task 17)
 BUYBACK_RATE_LIMIT = os.environ.get("BUYBACK_RATE_LIMIT", "10/h")
 

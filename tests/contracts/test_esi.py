@@ -295,3 +295,53 @@ def test_a_name_lookup_failure_returns_empty_rather_than_failing_the_check():
     responses.add(responses.POST, NAMES_URL, json={}, status=500)
 
     assert build_gateway().resolve_names([2222]) == {}
+
+
+# X-Compatibility-Date is declared `required: true` on every ESI operation, and
+# CCP publishes the accepted values at https://esi.evetech.net/meta/compatibility-dates
+# The date pins which revision of the API answers, so it belongs in every request
+# and must be pinned deliberately rather than left to a server-side default.
+COMPAT_DATE = "2026-08-04"
+
+
+@responses.activate
+def test_the_compatibility_date_is_sent_on_the_contracts_request():
+    responses.add(responses.GET, CONTRACTS_URL, json=[], status=200)
+
+    build_gateway().fetch_contracts(character_id=CHARACTER_ID, access_token="t")
+
+    assert responses.calls[0].request.headers["X-Compatibility-Date"] == COMPAT_DATE
+
+
+@responses.activate
+def test_the_compatibility_date_is_sent_on_the_items_request():
+    responses.add(responses.GET, items_url(7001), json=[], status=200)
+
+    build_gateway().fetch_items(
+        character_id=CHARACTER_ID, contract_id=7001, access_token="t"
+    )
+
+    assert responses.calls[0].request.headers["X-Compatibility-Date"] == COMPAT_DATE
+
+
+@responses.activate
+def test_the_compatibility_date_is_sent_on_the_name_lookup():
+    """Unauthenticated, but the header is required on that operation too."""
+    responses.add(responses.POST, NAMES_URL, json=[], status=200)
+
+    build_gateway().resolve_names([2222])
+
+    assert responses.calls[0].request.headers["X-Compatibility-Date"] == COMPAT_DATE
+
+
+@responses.activate
+def test_the_compatibility_date_is_configurable():
+    """Pinned, but overridable, so moving to a newer revision is a config change."""
+    responses.add(responses.GET, CONTRACTS_URL, json=[], status=200)
+
+    gateway = EsiContractGateway(
+        user_agent="eve-buyback tests", compatibility_date="2025-09-30"
+    )
+    gateway.fetch_contracts(character_id=CHARACTER_ID, access_token="t")
+
+    assert responses.calls[0].request.headers["X-Compatibility-Date"] == "2025-09-30"

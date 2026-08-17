@@ -69,6 +69,17 @@ confidential-client flow with PKCE on top is fully supported.
 - `raw_quantity` is `-1` for a singleton, and for blueprints distinguishes an
   original from a copy.
 
+**Every operation requires an `X-Compatibility-Date` header.** It pins which
+revision of the API answers, so CCP can change response shapes without breaking
+existing callers. Accepted values are published at
+`https://esi.evetech.net/meta/compatibility-dates`; `ESI_COMPATIBILITY_DATE` pins
+ours at `2026-08-04` deliberately, because following whatever is newest is the
+silent breakage the header exists to prevent.
+
+This is easy to miss when reading the spec: the header parameters arrive as
+`$ref` entries, so a listing that does not dereference them shows five nameless
+headers and the requirement is invisible. It was missed exactly that way here.
+
 **Tokens.** The access token is a JWT valid for roughly 1200 seconds. A refresh
 returns a refresh token that **may differ from the one submitted, and the
 submitted one is then invalid**. Storage must be overwritten on every refresh;

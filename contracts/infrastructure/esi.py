@@ -16,6 +16,11 @@ Schema verified against https://esi.evetech.net/meta/openapi.json (OpenAPI 3.1):
 
   POST /universe/names
       unauthenticated, batched, best effort here
+
+Every operation additionally requires an X-Compatibility-Date header. It is
+declared required on the parameters of each path; that is easy to miss when
+reading the spec, because the parameters arrive as $ref entries and a listing
+that does not dereference them shows five nameless headers.
 """
 
 from datetime import datetime
@@ -28,6 +33,14 @@ from contracts.domain.gateway import ContractSourceError, ScopeRejected
 
 BASE_URL = "https://esi.evetech.net"
 TIMEOUT_SECONDS = 30
+
+# X-Compatibility-Date is `required: true` on every ESI operation: it pins which
+# revision of the API answers, so ESI can change shapes without breaking callers.
+# Pinned deliberately rather than tracking whatever is newest — a silent bump is
+# exactly the breakage the header exists to prevent. CCP publishes the accepted
+# values at https://esi.evetech.net/meta/compatibility-dates; moving forward means
+# re-reading the spec for the endpoints below, then changing this.
+DEFAULT_COMPATIBILITY_DATE = "2026-08-04"
 
 # A sanity bound on X-Pages. A wrong or hostile header should not turn one click
 # into an unbounded request loop.
@@ -48,9 +61,25 @@ def _int_header(response, name: str, default: int) -> int:
 
 
 class EsiContractGateway:
-    def __init__(self, *, user_agent: str, base_url: str = BASE_URL):
+    def __init__(
+        self,
+        *,
+        user_agent: str,
+        base_url: str = BASE_URL,
+        compatibility_date: str = DEFAULT_COMPATIBILITY_DATE,
+    ):
         self._user_agent = user_agent
         self._base_url = base_url.rstrip("/")
+        self._compatibility_date = compatibility_date
+
+    def _headers(self, **extra) -> dict:
+        """Headers every ESI call needs, whether or not it is authenticated."""
+        return {
+            "Accept": "application/json",
+            "User-Agent": self._user_agent,
+            "X-Compatibility-Date": self._compatibility_date,
+            **extra,
+        }
 
     def fetch_contracts(self, *, character_id: int, access_token: str):
         path = f"/characters/{character_id}/contracts"
@@ -94,7 +123,7 @@ class EsiContractGateway:
             response = requests.post(
                 f"{self._base_url}/universe/names",
                 json=wanted,
-                headers={"Accept": "application/json", "User-Agent": self._user_agent},
+                headers=self._headers(),
                 timeout=TIMEOUT_SECONDS,
             )
             response.raise_for_status()
@@ -116,11 +145,7 @@ class EsiContractGateway:
             response = requests.get(
                 f"{self._base_url}{path}",
                 params=params,
-                headers={
-                    "Authorization": f"Bearer {access_token}",
-                    "Accept": "application/json",
-                    "User-Agent": self._user_agent,
-                },
+                headers=self._headers(Authorization=f"Bearer {access_token}"),
                 timeout=TIMEOUT_SECONDS,
             )
         except requests.RequestException as exc:
