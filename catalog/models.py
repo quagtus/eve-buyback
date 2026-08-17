@@ -39,9 +39,40 @@ class EveType(models.Model):
     group = models.ForeignKey(
         EveGroup, on_delete=models.CASCADE, related_name="types"
     )
+    portion_size = models.PositiveIntegerField(
+        default=1,
+        help_text="Units consumed per reprocessing batch. 100 for raw ore, 1 for ice.",
+    )
 
     class Meta:
         ordering = ["name"]
 
     def __str__(self):
         return self.name
+
+
+class EveTypeMaterial(models.Model):
+    """What one reprocessing batch of `type` yields.
+
+    quantity is per batch of `type.portion_size`, not per unit: Veldspar's
+    portion_size is 100 and its Tritanium quantity is 400, so 100 units give 400.
+    """
+
+    type = models.ForeignKey(
+        EveType, on_delete=models.CASCADE, related_name="materials"
+    )
+    material = models.ForeignKey(
+        EveType, on_delete=models.CASCADE, related_name="reprocesses_from"
+    )
+    quantity = models.PositiveBigIntegerField()
+
+    class Meta:
+        ordering = ["type_id", "material_id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["type", "material"], name="eve_type_material_unique"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.type} -> {self.quantity} x {self.material}"
