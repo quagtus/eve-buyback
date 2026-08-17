@@ -133,3 +133,25 @@ docker compose exec web python manage.py seed_catalog
 
 (Use the `-f docker-compose.yml -f docker-compose.prod.yml` form in
 production, as in §3.)
+
+## ESI contract checking (optional)
+
+1. Register an application at <https://developers.eveonline.com/applications>.
+   - Scope: `esi-contracts.read_character_contracts.v1`. It must be **ticked on
+     the application itself**, not just requested by the app. If it is missing,
+     SSO answers `The requested '<scope>' scope is not valid` at login — an
+     application-registration problem, not a wrong scope string. Note it is
+     `esi-contracts.read_character_contracts.v1`, not
+     `esi-contracts.read_character_contracts.v1`, which is the address book.
+   - Callback URL: `https://your-domain/admin/contracts/callback/` — this must
+     match `ESI_CALLBACK_URL` exactly, or SSO rejects the login with
+     `invalid_request: redirect_uri mismatch`.
+2. Generate the token encryption key:
+   `docker compose exec web python manage.py generate_esi_key`
+3. Set `ESI_CLIENT_ID`, `ESI_CLIENT_SECRET`, `ESI_CALLBACK_URL`, `ESI_TOKEN_KEY`
+   and optionally `ESI_USER_AGENT`.
+4. Restart, then connect your character at **Contracts → Contract check**.
+
+Keep `ESI_TOKEN_KEY` with your other secrets. Losing it does not lose data — the
+stored refresh token simply becomes unreadable and the page asks you to log in
+again.

@@ -10,3 +10,5 @@ pytest==8.3.4
 pytest-django==4.9.0
 responses==0.25.3
 pillow==12.2.0
+PyJWT==2.13.0
+cryptography==50.0.0

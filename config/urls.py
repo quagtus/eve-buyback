@@ -5,11 +5,18 @@ from django.contrib import admin
 from django.urls import include, path, re_path
 from django.views.static import serve
 
+from contracts.views import callback, contract_check, disconnect, link
 from pricing.views import rule_summary
 
+# Every admin/ route here must come BEFORE admin.site.urls, which is a catch-all
+# under that prefix — anything registered after it never matches.
 urlpatterns = [
     path("i18n/", include("django.conf.urls.i18n")),
     path("admin/pricing/summary/", admin.site.admin_view(rule_summary), name="pricing_summary"),
+    path("admin/contracts/check/", admin.site.admin_view(contract_check), name="contract_check"),
+    path("admin/contracts/link/", admin.site.admin_view(link), name="contract_link"),
+    path("admin/contracts/callback/", admin.site.admin_view(callback), name="contract_callback"),
+    path("admin/contracts/disconnect/", admin.site.admin_view(disconnect), name="contract_disconnect"),
     path("admin/", admin.site.urls),
     path("", include("buyback.urls")),
 ]

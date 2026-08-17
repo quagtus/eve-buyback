@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "pricing",
     "buyback",
     "siteconfig",
+    "contracts",
 ]
 
 MIDDLEWARE = [
@@ -139,6 +140,45 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 JANICE_API_KEY = os.environ.get("JANICE_API_KEY", "")
 JANICE_BASE_URL = os.environ.get("JANICE_BASE_URL", "https://janice.e-351.com/api/rest/v2")
 
+# EVE SSO / ESI integration for the admin contract check.
+#
+# Client id and secret are environment variables for the same reason
+# JANICE_API_KEY is: credentials stay out of the database and its backups.
+# The refresh token cannot be — it is obtained at runtime — so it is encrypted
+# with ESI_TOKEN_KEY before it is stored. Generate that key with
+# `manage.py generate_esi_key`.
+ESI_CLIENT_ID = os.environ.get("ESI_CLIENT_ID", "")
+ESI_CLIENT_SECRET = os.environ.get("ESI_CLIENT_SECRET", "")
+ESI_TOKEN_KEY = os.environ.get("ESI_TOKEN_KEY", "")
+
+# Explicit rather than derived from the request: this must match the callback
+# registered at developers.eveonline.com byte for byte, and building it from
+# build_absolute_uri() behind a TLS-terminating proxy is the usual cause of
+# "invalid_request: redirect_uri mismatch".
+ESI_CALLBACK_URL = os.environ.get("ESI_CALLBACK_URL", "")
+
+# CCP asks third-party applications to identify themselves with a contactable
+# string on every ESI call.
+ESI_USER_AGENT = os.environ.get("ESI_USER_AGENT", "eve-buyback")
+
+# Space-separated scopes requested at login. Must match the scopes ticked on
+# your application at developers.eveonline.com, or SSO rejects the login with
+# "The requested '<scope>' scope is not valid".
+#
+# If a check then comes back 401, ESI states which scope it wanted in the
+# response body and the page shows that text verbatim — change this to match it.
+ESI_SCOPES = os.environ.get("ESI_SCOPES", "esi-contracts.read_character_contracts.v1")
+
+# ESI requires an X-Compatibility-Date header on every request. It pins which
+# revision of the API answers, so CCP can change response shapes without
+# breaking existing callers.
+#
+# Pinned on purpose rather than tracking the newest date: an automatic bump is
+# precisely the silent breakage this header exists to prevent. Accepted values
+# are listed at https://esi.evetech.net/meta/compatibility-dates — before moving
+# it forward, re-read the spec for the contracts and universe/names endpoints.
+ESI_COMPATIBILITY_DATE = os.environ.get("ESI_COMPATIBILITY_DATE", "2026-08-04")
+
 # Public quote submission rate limit (see Task 17)
 BUYBACK_RATE_LIMIT = os.environ.get("BUYBACK_RATE_LIMIT", "10/h")
 
@@ -180,6 +220,12 @@ UNFOLD = {
                 "items": [
                     {"title": "Quotes", "link": "/admin/buyback/quote/"},
                     {"title": "Settings", "link": "/admin/siteconfig/siteconfig/"},
+                ],
+            },
+            {
+                "title": "Contracts",
+                "items": [
+                    {"title": "Contract check", "link": "/admin/contracts/check/"},
                 ],
             },
         ],

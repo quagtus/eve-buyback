@@ -1,0 +1,248 @@
+{% extends "admin/base_site.html" %}
+{% load eve_formats %}
+
+{% comment %}
+Styling is a scoped <style> block, not Tailwind classes: this extends
+admin/base_site.html, which does not load the site's app.css, so utility classes
+would not resolve here. Same approach as pricing/rule_summary.html.
+
+Colours hang off CSS custom properties keyed to `html.dark`, which Unfold sets
+for an explicit dark choice AND for auto mode when the OS prefers dark. Hooking
+.dark alone therefore covers every case; an extra prefers-color-scheme query
+would double-apply.
+
+Green rows carry a left border and a "Ready" pill as well as the tint, so the
+signal does not depend on colour perception alone.
+
+Not translated: the admin is English by product decision.
+{% endcomment %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+  .cc {
+    --cc-text: #1f2a33;
+    --cc-muted: #4a5a66;
+    --cc-border: #c2ccd2;
+    --cc-head-bg: #e4e9ec;
+    --cc-accent: #8a5000;
+    --cc-danger: #a3231f;
+    --cc-ok: #1c6b2e;
+    --cc-ok-bg: #e6f2e8;
+    --cc-panel-bg: #f4f6f7;
+  }
+  html.dark .cc {
+    --cc-text: #cfd8dc;
+    --cc-muted: #8fa3ad;
+    --cc-border: #2a3c4d;
+    --cc-head-bg: #0b131a;
+    --cc-accent: #fca311;
+    --cc-danger: #e57373;
+    --cc-ok: #7fd67f;
+    --cc-ok-bg: #10241a;
+    --cc-panel-bg: #0b131a;
+  }
+
+  .cc { color: var(--cc-text); }
+  .cc-intro { color: var(--cc-muted); max-width: 66ch; margin: .25rem 0 1rem; }
+
+  .cc-panel {
+    border: 1px solid var(--cc-border);
+    background: var(--cc-panel-bg);
+    padding: 14px 16px;
+    margin-bottom: 1rem;
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
+  }
+  .cc-panel h2 { font-size: 15px; margin: 0 0 .4rem; }
+  .cc-panel p { color: var(--cc-muted); margin: .25rem 0; }
+  .cc-panel code { color: var(--cc-accent); }
+  .cc-panel-error { border-color: var(--cc-danger); }
+  .cc-panel-error h2 { color: var(--cc-danger); }
+
+  .cc-actions { display: flex; gap: .75rem; align-items: center; margin: 1rem 0; flex-wrap: wrap; }
+  .cc-button {
+    display: inline-block; padding: 7px 18px; font-size: 13px; cursor: pointer;
+    border: 1px solid var(--cc-border); background: var(--cc-head-bg);
+    color: var(--cc-text); text-decoration: none;
+  }
+  .cc-button:disabled { opacity: .55; cursor: progress; }
+  .cc-button-primary { border-color: var(--cc-accent); color: var(--cc-accent); }
+
+  .cc-counts { color: var(--cc-muted); font-size: 13px; margin-bottom: .6rem; }
+  .cc-counts strong { color: var(--cc-ok); }
+
+  .cc-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--cc-border);
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
+  }
+  .cc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .cc-table thead { background: var(--cc-head-bg); }
+  .cc-table th {
+    text-align: left; padding: 8px 12px; font-size: 11px; font-weight: 600;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--cc-muted);
+  }
+  .cc-table td { padding: 8px 12px; border-top: 1px solid var(--cc-border); vertical-align: top; }
+  .cc-num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  .cc-row-ready { background: var(--cc-ok-bg); box-shadow: inset 3px 0 0 var(--cc-ok); }
+
+  .cc-pill {
+    display: inline-block; padding: 2px 8px; font-size: 10px; font-weight: 600;
+    letter-spacing: .07em; text-transform: uppercase; white-space: nowrap;
+    border: 1px solid currentColor; color: var(--cc-muted);
+  }
+  .cc-pill-ready { color: var(--cc-ok); }
+  .cc-pill-attention { color: var(--cc-danger); }
+
+  .cc-flags { margin: 0; padding: 0; list-style: none; font-size: 12px; }
+  .cc-flags li { margin: .1rem 0; }
+  .cc-flag-problem { color: var(--cc-danger); }
+  .cc-flag-advisory { color: var(--cc-accent); }
+  .cc-diff { color: var(--cc-muted); font-size: 11px; }
+
+  .cc-empty { padding: 14px 12px; color: var(--cc-muted); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="cc">
+  <h1>Contract check</h1>
+  <p class="cc-intro">
+    Reads your outstanding in-game contracts and marks the ones whose description
+    matches a quote code, whose price matches the quote total, and whose contents
+    match the quoted items. Accepting still happens in the game client.
+  </p>
+
+  {% if missing_settings %}
+    <div class="cc-panel cc-panel-error">
+      <h2>ESI is not configured</h2>
+      <p>Set these environment variables and restart:</p>
+      <p>{% for name in missing_settings %}<code>{{ name }}</code>{% if not forloop.last %}, {% endif %}{% endfor %}</p>
+      <p>
+        Register an application at developers.eveonline.com with the scope
+        <code>esi-contracts.read_character_contracts.v1</code> and a callback of
+        <code>/admin/contracts/callback/</code> on this site. Generate
+        <code>ESI_TOKEN_KEY</code> with <code>manage.py generate_esi_key</code>.
+      </p>
+    </div>
+  {% else %}
+
+    {% if error %}
+      <div class="cc-panel cc-panel-error">
+        <h2>The check did not complete</h2>
+        <p>{{ error }}</p>
+      </div>
+    {% endif %}
+
+    {% if character and character.is_connected %}
+      <div class="cc-panel">
+        <h2>{{ character.character_name }}</h2>
+        <p>
+          Linked {{ character.linked_at|date:"Y-m-d H:i" }} UTC.
+          {% if character.last_checked_at %}
+            Last checked {{ character.last_checked_at|date:"Y-m-d H:i" }} UTC.
+          {% endif %}
+        </p>
+      </div>
+
+      <div class="cc-actions">
+        {% comment %}
+        Disabling on submit is not cosmetic: the refresh token rotates, so two
+        concurrent refreshes leave one of them invalid and disconnect the
+        integration. Recovery is one click of Reconnect, but avoiding it is
+        cheaper.
+        {% endcomment %}
+        <form method="post" action="/admin/contracts/check/"
+              onsubmit="this.querySelector('button').disabled = true;">
+          {% csrf_token %}
+          <button type="submit" class="cc-button cc-button-primary">Check contracts</button>
+        </form>
+        <a class="cc-button" href="/admin/contracts/link/">Reconnect</a>
+        <form method="post" action="/admin/contracts/disconnect/">
+          {% csrf_token %}
+          <button type="submit" class="cc-button">Disconnect</button>
+        </form>
+      </div>
+    {% else %}
+      <div class="cc-panel">
+        <h2>No character connected</h2>
+        {% if character and character.last_error %}
+          <p>Disconnected: {{ character.last_error }}</p>
+        {% else %}
+          <p>Log in with the character that receives your buyback contracts.</p>
+        {% endif %}
+        <p><a class="cc-button cc-button-primary" href="/admin/contracts/link/">Connect with EVE Online</a></p>
+      </div>
+    {% endif %}
+
+    {% if result %}
+      <p class="cc-counts">
+        {{ rows|length }} outstanding ·
+        <strong>{{ result.ready_count }} ready to accept</strong> ·
+        {{ result.attention_count }} need attention
+      </p>
+
+      <div class="cc-table-wrap">
+        <table class="cc-table">
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Quote</th>
+              <th>From</th>
+              <th class="cc-num">Contract price</th>
+              <th class="cc-num">Quote total</th>
+              <th class="cc-num">Delta</th>
+              <th>Issued</th>
+              <th>Findings</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+              <tr {% if row.verdict.is_acceptable %}class="cc-row-ready"{% endif %}>
+                <td>
+                  {% if row.verdict.is_acceptable %}
+                    <span class="cc-pill cc-pill-ready">Ready</span>
+                  {% else %}
+                    <span class="cc-pill cc-pill-attention">Check</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if row.verdict.quote_code %}
+                    <a href="/q/{{ row.verdict.quote_code }}/" target="_blank" rel="noopener">{{ row.verdict.quote_code }}</a>
+                  {% else %}
+                    <span class="cc-diff">{{ row.contract.title|default:"(no description)" }}</span>
+                  {% endif %}
+                </td>
+                <td>{{ row.issuer_name }}</td>
+                <td class="cc-num">{{ row.contract.price|isk }}</td>
+                <td class="cc-num">{% if row.quote_total %}{{ row.quote_total|isk }}{% else %}—{% endif %}</td>
+                <td class="cc-num">{% if row.verdict.price_delta %}{{ row.verdict.price_delta|isk }}{% else %}—{% endif %}</td>
+                <td>{{ row.contract.date_issued|date:"Y-m-d H:i" }}</td>
+                <td>
+                  <ul class="cc-flags">
+                    {% for problem in row.verdict.problems %}
+                      <li class="cc-flag-problem">{{ problem }}</li>
+                    {% endfor %}
+                    {% for advisory in row.verdict.advisories %}
+                      <li class="cc-flag-advisory">{{ advisory }}</li>
+                    {% endfor %}
+                    {% for diff in row.verdict.item_diffs %}
+                      <li class="cc-diff">
+                        type {{ diff.type_id }}: quoted {{ diff.quote_quantity|num_fmt }},
+                        contract {{ diff.contract_quantity|num_fmt }}
+                      </li>
+                    {% endfor %}
+                  </ul>
+                </td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="8" class="cc-empty">No outstanding contracts assigned to you.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  {% endif %}
+</div>
+{% endblock %}
