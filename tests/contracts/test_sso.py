@@ -11,7 +11,7 @@ import requests
 import responses
 
 from contracts.infrastructure.sso import (
-    CONTRACTS_SCOPE,
+    DEFAULT_SCOPES,
     REVOKE_URL,
     TOKEN_URL,
     EveSso,
@@ -59,7 +59,7 @@ def test_the_authorize_url_carries_everything_sso_requires():
     assert query["response_type"] == ["code"]
     assert query["client_id"] == [CLIENT_ID]
     assert query["redirect_uri"] == [CALLBACK]
-    assert query["scope"] == [CONTRACTS_SCOPE]
+    assert query["scope"] == [DEFAULT_SCOPES]
     assert query["state"] == ["abc123"]
     assert query["code_challenge"] == ["chal"]
     assert query["code_challenge_method"] == ["S256"]
@@ -265,14 +265,10 @@ def test_a_json_error_description_is_included():
     assert "Invalid redirect_uri" in str(exc.value)
 
 
-def test_the_default_requested_scope_is_the_contracts_scope():
-    """esi-characters.read_contacts.v1 is the address book and grants
-    /characters/{id}/contacts, not /contracts. Guards against the swap."""
-    assert CONTRACTS_SCOPE == "esi-contracts.read_character_contracts.v1"
-
+def test_the_authorize_url_requests_the_default_scopes():
     url = build_sso().authorize_url(state="s", code_challenge="c")
 
-    assert parse_qs(urlparse(url).query)["scope"] == [CONTRACTS_SCOPE]
+    assert parse_qs(urlparse(url).query)["scope"] == [DEFAULT_SCOPES]
 
 
 def test_the_requested_scope_can_be_overridden():

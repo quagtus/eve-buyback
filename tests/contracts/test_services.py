@@ -18,7 +18,7 @@ from contracts.domain.gateway import ContractSourceError
 from contracts.domain.verdict import Advisory, Problem
 from contracts.infrastructure.crypto import TokenCipher, TokenCipherError
 from contracts.infrastructure.sso import (
-    CONTRACTS_SCOPE,
+    DEFAULT_SCOPES,
     CharacterIdentity,
     TokenPair,
     TokenRejected,
@@ -304,8 +304,9 @@ def test_a_successful_check_records_when_it_ran_and_clears_the_error(linked, quo
 class FakeLinkSso:
     """Exchange half of the SSO client, for the link path."""
 
-    def __init__(self):
+    def __init__(self, requested=(DEFAULT_SCOPES,)):
         self.revoked = []
+        self.requested_scopes = tuple(requested)
 
     def exchange_code(self, code, code_verifier):
         return TokenPair(access_token="access-1", refresh_token="refresh-1")
@@ -337,7 +338,7 @@ def link(scopes, **kwargs):
 
 @pytest.mark.django_db
 def test_linking_stores_the_character_and_encrypts_the_token():
-    character = link((CONTRACTS_SCOPE,))
+    character = link((DEFAULT_SCOPES,))
 
     assert character.character_id == CHARACTER_ID
     assert character.character_name == "Operator"
@@ -348,16 +349,33 @@ def test_linking_stores_the_character_and_encrypts_the_token():
 
 
 @pytest.mark.django_db
-def test_linking_without_the_contracts_scope_is_refused_before_storing_anything():
-    """A token that cannot read contracts is worse than no token: it would link
-    cleanly and then 403 on the first check."""
+def test_linking_is_refused_when_a_requested_scope_was_withheld():
+    """A token missing a scope we asked for is worse than no token: it links
+    cleanly and then 403s on the first check.
+
+    The guard compares requested against granted rather than naming a scope, so
+    it keeps working whatever ESI_SCOPES is set to.
+    """
+    sso = FakeLinkSso(requested=("scope-a", "scope-b"))
+
     with pytest.raises(MissingScopeError) as exc:
-        link(("esi-characters.read_contacts.v1",))
+        link(("scope-a",), sso=sso)
 
     message = str(exc.value)
-    assert CONTRACTS_SCOPE in message
+    assert "scope-b" in message, "the withheld scope must be named"
     assert "developers.eveonline.com" in message
     assert EsiCharacter.current() is None
+
+
+@pytest.mark.django_db
+def test_linking_succeeds_when_extra_scopes_come_back():
+    """Granting more than we asked for is not a failure."""
+    sso = FakeLinkSso(requested=("scope-a",))
+
+    character = link(("scope-a", "scope-b"), sso=sso)
+
+    assert character.is_connected
+    assert character.scopes == "scope-a scope-b"
 
 
 @pytest.mark.django_db
@@ -371,10 +389,10 @@ def test_linking_with_no_scopes_at_all_says_so():
 @pytest.mark.django_db
 def test_linking_a_different_character_revokes_the_previous_token():
     """Housekeeping: the replaced credential should not stay live at CCP."""
-    link((CONTRACTS_SCOPE,))
+    link((DEFAULT_SCOPES,))
     sso = FakeLinkSso()
 
-    link((CONTRACTS_SCOPE,), sso=sso, character_id=9999, name="Someone Else")
+    link((DEFAULT_SCOPES,), sso=sso, character_id=9999, name="Someone Else")
 
     assert sso.revoked == ["refresh-1"]
     assert EsiCharacter.objects.count() == 1
@@ -384,9 +402,9 @@ def test_linking_a_different_character_revokes_the_previous_token():
 @pytest.mark.django_db
 def test_relinking_the_same_character_does_not_revoke():
     """Reconnecting the same pilot is a refresh, not a replacement."""
-    link((CONTRACTS_SCOPE,))
+    link((DEFAULT_SCOPES,))
     sso = FakeLinkSso()
 
-    link((CONTRACTS_SCOPE,), sso=sso)
+    link((DEFAULT_SCOPES,), sso=sso)
 
     assert sso.revoked == []

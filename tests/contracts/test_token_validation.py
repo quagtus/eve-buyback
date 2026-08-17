@@ -15,7 +15,7 @@ import jwt
 import pytest
 from cryptography.hazmat.primitives.asymmetric import rsa
 
-from contracts.infrastructure.sso import CONTRACTS_SCOPE, SsoError, TokenValidator
+from contracts.infrastructure.sso import DEFAULT_SCOPES, SsoError, TokenValidator
 
 CLIENT_ID = "test-client-id"
 CHARACTER_ID = 2112625428
@@ -35,7 +35,7 @@ def make_token(private_key, **overrides):
     claims = {
         "sub": f"CHARACTER:EVE:{CHARACTER_ID}",
         "name": "Test Pilot",
-        "scp": [CONTRACTS_SCOPE],
+        "scp": [DEFAULT_SCOPES],
         "aud": [CLIENT_ID, "EVE Online"],
         "iss": "login.eveonline.com",
         "iat": int(time.time()),
@@ -66,7 +66,7 @@ def test_a_valid_token_yields_the_character_identity(signing_key):
 
     assert identity.character_id == CHARACTER_ID
     assert identity.character_name == "Test Pilot"
-    assert identity.scopes == (CONTRACTS_SCOPE,)
+    assert identity.scopes == (DEFAULT_SCOPES,)
 
 
 def test_a_token_signed_by_the_wrong_key_is_rejected(signing_key, other_key):
@@ -99,7 +99,7 @@ def test_a_token_with_no_expiry_is_rejected(signing_key):
     claims = {
         "sub": f"CHARACTER:EVE:{CHARACTER_ID}",
         "name": "Test Pilot",
-        "scp": [CONTRACTS_SCOPE],
+        "scp": [DEFAULT_SCOPES],
         "aud": [CLIENT_ID, "EVE Online"],
         "iss": "login.eveonline.com",
     }
@@ -167,9 +167,9 @@ def test_a_wrong_prefix_whose_tail_is_numeric_is_rejected(signing_key):
 
 def test_a_single_scope_arriving_as_a_bare_string_is_normalised(signing_key):
     """SSO returns scp as a string when exactly one scope was granted."""
-    token = make_token(signing_key, scp=CONTRACTS_SCOPE)
+    token = make_token(signing_key, scp=DEFAULT_SCOPES)
 
-    assert build_validator(signing_key).identity(token).scopes == (CONTRACTS_SCOPE,)
+    assert build_validator(signing_key).identity(token).scopes == (DEFAULT_SCOPES,)
 
 
 def test_a_jwks_fetch_failure_is_an_sso_error(signing_key):

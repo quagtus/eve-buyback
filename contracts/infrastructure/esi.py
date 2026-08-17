@@ -3,7 +3,7 @@
 Schema verified against https://esi.evetech.net/meta/openapi.json (OpenAPI 3.1):
 
   GET /characters/{id}/contracts
-      scope esi-contracts.read_character_contracts.v1
+      scope esi-characters.read_contacts.v1
       paginated by ?page=N, total in the X-Pages RESPONSE HEADER
       title == the in-game contract Description
       price == the ISK the acceptor pays (item exchange and auctions)

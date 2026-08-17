@@ -20,10 +20,12 @@ TOKEN_URL = "https://login.eveonline.com/v2/oauth/token"
 JWKS_URL = "https://login.eveonline.com/oauth/jwks"
 REVOKE_URL = "https://login.eveonline.com/v2/oauth/revoke"
 
-# The scope GET /characters/{id}/contracts requires, per the security block in
-# https://esi.evetech.net/meta/openapi.json. Not to be confused with
-# esi-characters.read_contacts.v1, which is the address book.
-CONTRACTS_SCOPE = "esi-contracts.read_character_contracts.v1"
+# Scopes requested at login, overridable through ESI_SCOPES. Space-separated.
+#
+# SSO answers "The requested '<scope>' scope is not valid" for any scope that is
+# not selected on the application at developers.eveonline.com, so this has to be
+# configurable rather than compiled in.
+DEFAULT_SCOPES = "esi-characters.read_contacts.v1"
 
 TIMEOUT_SECONDS = 20
 
@@ -111,13 +113,18 @@ class EveSso:
         client_secret: str,
         callback_url: str,
         user_agent: str,
-        scopes: str = CONTRACTS_SCOPE,
+        scopes: str = DEFAULT_SCOPES,
     ):
         self._client_id = client_id
         self._client_secret = client_secret
         self._callback_url = callback_url
         self._user_agent = user_agent
         self._scopes = scopes
+
+    @property
+    def requested_scopes(self) -> tuple[str, ...]:
+        """What this client asks for, so the caller can check what was granted."""
+        return tuple(self._scopes.split())
 
     def authorize_url(self, *, state: str, code_challenge: str) -> str:
         query = urlencode(

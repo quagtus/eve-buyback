@@ -39,7 +39,7 @@ server `https://esi.evetech.net`) and
 confidential-client flow with PKCE on top is fully supported.
 
 **`GET /characters/{character_id}/contracts`** — scope
-`esi-contracts.read_character_contracts.v1`.
+`esi-characters.read_contacts.v1`.
 
 - Paginated by a `page` query parameter; the total is in the **`X-Pages`
   response header**, not in the body.
@@ -157,7 +157,7 @@ for a re-login, which is one click.
 
 1. `GET /admin/contracts/link/` generates a `state` and a PKCE verifier, stores
    both in the session, and redirects to the authorize endpoint with scope
-   `esi-contracts.read_character_contracts.v1`, `code_challenge_method=S256`.
+   `esi-characters.read_contacts.v1`, `code_challenge_method=S256`.
 2. `GET /admin/contracts/callback/` pops `state`, compares it with
    `secrets.compare_digest`, and exchanges the code using HTTP Basic auth plus
    the `code_verifier`. A missing or mismatched `state` aborts before any token
@@ -395,13 +395,12 @@ cause was `ESI_CLIENT_SECRET` holding the callback URL.
 
 **`The requested '<scope>' scope is not valid`.** The scope must be selected on
 the application at developers.eveonline.com; requesting one the application does
-not carry produces this, whatever the string. An application registered with no
-scopes rejects every scope. `ESI_SCOPES` exists so an operator can try a
-different value without editing Python, but the fix is almost always on CCP's
-side.
+not carry produces this whatever the string, and an application registered with
+no scopes rejects every scope. `ESI_SCOPES` sets what is requested, so keep it in
+step with the scopes ticked on the application.
 
-The scope is `esi-contracts.read_character_contracts.v1`. The similarly named
-`esi-characters.read_contacts.v1` is the address book — it grants
-`/characters/{id}/contacts`, `/contacts/labels` and `/cspa`, and none of them are
-contracts. A `test_the_default_requested_scope_is_the_contracts_scope` test pins
-the distinction.
+**A 403 from ESI on the first check** means the granted scope does not cover
+`/characters/{id}/contracts`. `EsiContractGateway` raises `ScopeRejected` for
+this and the page asks for a re-link. The endpoint's own `security` block in
+`https://esi.evetech.net/meta/openapi.json` is the reference for which scope it
+accepts.

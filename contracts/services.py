@@ -17,7 +17,6 @@ from contracts.domain.verification import verify_all
 from contracts.infrastructure.crypto import TokenCipher, TokenCipherError
 from contracts.infrastructure.esi import EsiContractGateway
 from contracts.infrastructure.sso import (
-    CONTRACTS_SCOPE,
     EveSso,
     SsoError,
     TokenRejected,
@@ -110,12 +109,17 @@ def link_character(
     tokens = sso.exchange_code(code, code_verifier)
     identity = (validator or build_validator()).identity(tokens.access_token)
 
-    if CONTRACTS_SCOPE not in identity.scopes:
+    # Compare what was asked for against what came back, rather than naming a
+    # scope here: which scope grants contracts is a deployment question, settled
+    # by ESI_SCOPES and by what the application at CCP actually carries.
+    granted = set(identity.scopes)
+    withheld = [scope for scope in sso.requested_scopes if scope not in granted]
+    if withheld:
         # Usually the application itself was registered without the scope, in
-        # which case SSO never offered it and no amount of re-authorising helps.
+        # which case SSO never offered it and re-authorising cannot help.
         raise MissingScopeError(
-            f"The login granted {', '.join(identity.scopes) or 'no scopes'}, but "
-            f"reading contracts needs {CONTRACTS_SCOPE}. Add that scope to your "
+            f"The login granted {', '.join(identity.scopes) or 'no scopes'}, "
+            f"withholding {', '.join(withheld)}. Add the missing scope to your "
             "application at developers.eveonline.com, save it, then connect again."
         )
 
