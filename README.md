@@ -38,6 +38,17 @@ Overlapping rules at the same level are rejected when you save them, so the
 outcome is always unambiguous. The admin has a **rule summary** page showing
 every rule in one list, ordered by precedence.
 
+## Checking contracts
+
+Sellers put the quote code in the contract description. The admin page at
+**Contracts → Contract check** reads your outstanding in-game contracts through
+ESI and marks green the ones where the code, the price, and the contract's actual
+contents all match the quote.
+
+It is read-only — accepting a contract still happens in the game client. Setup is
+four environment variables; see
+[docs/design/contract-check.md](docs/design/contract-check.md).
+
 ## Requirements
 
 - Docker and Docker Compose
@@ -80,6 +91,7 @@ port so a second price source would only need a new adapter.
 
 - [docs/design/architecture.md](docs/design/architecture.md) — domain model, pricing resolution, Janice integration
 - [docs/design/frontend.md](docs/design/frontend.md) — design system, theming, internationalisation
+- [docs/design/contract-check.md](docs/design/contract-check.md) — ESI contract verification
 
 ## Development
 

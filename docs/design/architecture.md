@@ -177,3 +177,14 @@ Two properties of the dataset shape the implementation:
 - The Janice gateway is tested against a stub implementation of the port. A real-API integration test exists but is excluded from the default fast suite.
 - Docker Compose: `web` (Django + Gunicorn) and `db` (Postgres). Secrets via `.env`: `JANICE_API_KEY`, `DJANGO_SECRET_KEY`, DB credentials.
 - `seed_catalog` management command run once after first bring-up to import EVERef reference data.
+
+## Contract verification
+
+The `contracts` app closes the loop on a quote: it reads the operator's
+outstanding in-game contracts through ESI and checks each against the quote its
+description cites. It follows the same shape as the Janice integration — a
+`ContractSourceGateway` port in the domain, an `EsiContractGateway` adapter in
+infrastructure — so verification is a pure function that tests without a database
+or network.
+
+See [contract-check.md](contract-check.md).
