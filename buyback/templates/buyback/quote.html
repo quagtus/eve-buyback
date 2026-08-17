@@ -147,6 +147,40 @@
                 <td class="px-3 py-1.5 text-right font-mono tabular-nums">{{ item.percent_applied }}%</td>
                 <td class="px-3 py-1.5 text-right font-mono tabular-nums">{{ item.line_total|isk }}</td>
               </tr>
+
+              {% comment %}
+              A reprocessed line's value comes from its outputs, not from the
+              ore's own price, so the breakdown is the only thing that explains
+              the total. Materials with no configured rule are listed too, marked
+              "not paid" — that visibility is what keeps a forgotten mineral rule
+              from becoming an invisible shortfall.
+              {% endcomment %}
+              {% if item.materials.all %}
+                <tr class="border-t border-border-token/20 bg-surface/40">
+                  <td colspan="5" class="px-3 py-2">
+                    <div class="text-[11px] uppercase tracking-[0.15em] text-text-muted">
+                      {% blocktranslate with rate=item.yield_rate_applied %}Reprocessed at {{ rate }} yield{% endblocktranslate %}
+                    </div>
+                    <table class="mt-1 w-full text-xs">
+                      {% for material in item.materials.all %}
+                        <tr class="{% if material.is_unpriced %}text-danger{% else %}text-text-muted{% endif %}">
+                          <td class="py-0.5 pr-3">{{ material.type_name }}</td>
+                          <td class="py-0.5 pr-3 text-right font-mono tabular-nums">{{ material.quantity|num_fmt }}</td>
+                          <td class="py-0.5 pr-3 text-right font-mono tabular-nums">{{ material.unit_price|isk }}</td>
+                          <td class="py-0.5 pr-3 text-right font-mono tabular-nums">{{ material.percent_applied }}%</td>
+                          <td class="py-0.5 text-right font-mono tabular-nums">
+                            {% if material.is_unpriced %}
+                              {% translate "not paid" %}
+                            {% else %}
+                              {{ material.line_total|isk }}
+                            {% endif %}
+                          </td>
+                        </tr>
+                      {% endfor %}
+                    </table>
+                  </td>
+                </tr>
+              {% endif %}
             {% endfor %}
           </tbody>
         </table>

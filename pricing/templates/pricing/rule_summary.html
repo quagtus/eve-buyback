@@ -66,6 +66,7 @@ by AdminEnglishMiddleware.
   /* Selectors key off the icon slug, which is what rs-kind-{{ row.icon }} emits. */
   .rs-kind-ban .rs-icon { color: var(--rs-danger); }
   .rs-kind-tag .rs-icon { color: var(--rs-accent); }
+  .rs-kind-recycle .rs-icon { color: var(--rs-accent); }
 
   .rs-status { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
   .rs-status-expired { color: var(--rs-muted); }
@@ -109,6 +110,8 @@ by AdminEnglishMiddleware.
                     <circle cx="12" cy="12" r="9"></circle><path d="M5.6 5.6l12.8 12.8"></path>
                   {% elif row.icon == "tag" %}
                     <path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9-9-9z"></path><circle cx="7.5" cy="7.5" r="1.5"></circle>
+                  {% elif row.icon == "recycle" %}
+                    <path d="M20 12a8 8 0 1 1-2.34-5.66"></path><path d="M20 4v4h-4"></path>
                   {% elif row.icon == "sliders" %}
                     <path d="M4 7h16M4 17h16"></path><circle cx="9" cy="7" r="2.5"></circle><circle cx="16" cy="17" r="2.5"></circle>
                   {% else %}

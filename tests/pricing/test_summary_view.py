@@ -6,7 +6,13 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 
 from catalog.models import EveCategory, EveGroup, EveType
-from pricing.models import BlacklistEntry, CategoryDefaultPercent, CustomRule, SaleRule
+from pricing.models import (
+    BlacklistEntry,
+    CategoryDefaultPercent,
+    CustomRule,
+    ReprocessingRule,
+    SaleRule,
+)
 from pricing.views import build_summary_rows
 
 SUMMARY_URL = "/admin/pricing/summary/"
@@ -52,6 +58,15 @@ def rules(db):
     scheduled.groups.add(battleship)
 
     BlacklistEntry.objects.create(type=raven)
+
+    # A reprocessing rule too: the summary styles .rs-kind-recycle, and the CSS
+    # selector guard requires every styled class to be one the markup emits.
+    ice = EveGroup.objects.create(id=465, name="Ice", category=ship)
+    reprocessing = ReprocessingRule.objects.create(
+        label="Ice", yield_rate=Decimal("0.9063")
+    )
+    reprocessing.groups.add(ice)
+
     return ship
 
 
@@ -153,3 +168,29 @@ def test_summary_defines_dark_mode_colours(client, rules, django_user_model):
 
     assert "html.dark .rs" in body, "no dark-mode override block"
     assert "--rs-text" in body and "--rs-head-bg" in body
+
+
+@pytest.mark.django_db
+def test_reprocessing_rules_appear_in_the_summary(rules):
+    """A rule that changes the valuation basis is at least as important to see
+    as one that changes a percentage."""
+    from pricing.views import build_summary_rows
+
+    rows = build_summary_rows(timezone.now())
+    reprocessing = [row for row in rows if row["kind"] == "Reprocessing"]
+
+    assert len(reprocessing) == 1
+    assert reprocessing[0]["level"] == "Group"
+    assert reprocessing[0]["targets"] == ["Ice"]
+    # Shown as a percentage, because the template renders this column as
+    # "{{ row.percent|num_fmt }}%". A yield of 0.9063 is 90.63% recovery.
+    assert reprocessing[0]["percent"] == Decimal("90.63")
+
+
+@pytest.mark.django_db
+def test_every_reprocessing_row_carries_a_mapped_icon(rules):
+    from pricing.views import KIND_ICONS, build_summary_rows
+
+    kinds = {row["kind"] for row in build_summary_rows(timezone.now())}
+
+    assert kinds <= set(KIND_ICONS), f"unmapped kinds: {kinds - set(KIND_ICONS)}"

@@ -24,10 +24,15 @@ FLAG_REASON_LABELS = {
     "NO_RULE": _("No rule configured"),
     "UNRECOGNIZED": _("Unrecognized item"),
     "UNPARSEABLE": _("Could not be parsed"),
+    "BELOW_PORTION_SIZE": _("Less than one reprocessing batch"),
+    "ZERO_YIELD": _("Reprocessing yield is zero"),
 }
 
 # Kinds whose display value is the admin-authored rule name, not a translation.
-NAMED_KINDS = frozenset({"CUSTOM", "SALE"})
+# REPROCESSED belongs here rather than in SOURCE_KIND_LABELS: a reprocessed line
+# has a rule behind it, and showing the translated word "Reprocessed" instead
+# would throw away which rule was responsible.
+NAMED_KINDS = frozenset({"CUSTOM", "SALE", "REPROCESSED"})
 
 
 @register.filter

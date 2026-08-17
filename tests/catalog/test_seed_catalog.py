@@ -57,7 +57,15 @@ def test_import_loads_all_categories_and_groups_but_only_published_types(tmp_pat
     assert EveType.objects.get(id=34).group.category.name == "Material"
 
     assert EveType.objects.get(id=638).name == "Raven"
-    assert result == {"categories": 2, "groups": 2, "types": 2}
+    # materials/materials_skipped are zero here: this fixture carries no
+    # type_materials, which is the common case for non-ore types.
+    assert result == {
+        "categories": 2,
+        "groups": 2,
+        "types": 2,
+        "materials": 0,
+        "materials_skipped": 0,
+    }
 
 
 @pytest.mark.django_db

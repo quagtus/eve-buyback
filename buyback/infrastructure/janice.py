@@ -22,6 +22,14 @@ PRICE_FIELDS = {
     "sell": "sellPrice",
 }
 
+# The pricer endpoint returns both blocks and applies neither, so the adapter
+# picks one. The appraisal endpoint resolves this server-side into
+# effectivePrices, which is why only that call can ignore the distinction.
+VARIANT_BLOCKS = {
+    "immediate": "immediatePrices",
+    "top5percent": "top5AveragePrices",
+}
+
 TIMEOUT_SECONDS = 30
 
 
@@ -125,3 +133,60 @@ class JaniceAppraisalGateway:
             ) from exc
 
         return AppraisalResult(code=code, items=tuple(items), failures=failures)
+
+    def price_types(self, type_ids) -> dict[int, Decimal]:
+        """Price types directly, without going through a paste.
+
+        Used for reprocessing outputs: the seller pastes ore, and the minerals it
+        yields have to be priced even though they never appear in the text.
+        """
+        wanted = sorted({int(type_id) for type_id in type_ids})
+        if not wanted:
+            return {}
+
+        # Validated before the request so a misconfiguration fails immediately
+        # rather than after a round trip.
+        price_field = PRICE_FIELDS.get(self._pricing_basis)
+        if price_field is None:
+            raise AppraisalError(f"Unknown pricing basis: {self._pricing_basis!r}")
+        block = VARIANT_BLOCKS.get(self._pricing_variant)
+        if block is None:
+            raise AppraisalError(
+                f"Unknown pricing variant: {self._pricing_variant!r}"
+            )
+
+        try:
+            response = requests.post(
+                f"{self._base_url}/pricer",
+                params={"market": self._market_id},
+                headers={
+                    "X-ApiKey": self._api_key,
+                    "Content-Type": "text/plain",
+                },
+                data="\n".join(str(type_id) for type_id in wanted).encode("utf-8"),
+                timeout=TIMEOUT_SECONDS,
+            )
+            response.raise_for_status()
+            payload = response.json(parse_float=Decimal)
+        except requests.RequestException as exc:
+            raise AppraisalError(f"Janice pricer request failed: {exc}") from exc
+        except ValueError as exc:
+            raise AppraisalError("Janice pricer returned a non-JSON response") from exc
+
+        # A row missing its eid or price block is skipped rather than fatal: one
+        # odd entry must not discard the prices of every other material in the
+        # batch. The caller treats an absent price as unpriced, never as free.
+        try:
+            prices: dict[int, Decimal] = {}
+            for entry in payload or []:
+                eid = (entry.get("itemType") or {}).get("eid")
+                raw = (entry.get(block) or {}).get(price_field)
+                if eid is None or raw is None:
+                    continue
+                prices[int(eid)] = Decimal(str(raw))
+        except (AttributeError, KeyError, TypeError, ValueError) as exc:
+            raise AppraisalError(
+                f"Janice pricer returned an unexpected response shape: {exc}"
+            ) from exc
+
+        return prices

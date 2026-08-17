@@ -53,9 +53,11 @@ design — selection is by explicit rule targets rather than inferred — but bo
 noted because they are the obvious basis for a future "all ore" or "all Veldspar
 variants" target.
 
-Volumes: 9 541 types carry reprocessing data, giving **47 051** material rows, of
-which 462 types and 1 142 rows are in the Asteroid category. 26 992 types are
-published.
+Volumes: 9 541 types carry reprocessing data across the whole archive, giving
+47 051 material rows. Only published types in known groups are imported, which is
+8 077 types and 41 017 rows, one of which points at an unpublished material — so
+**41 016 rows are importable**, and that is the number a successful seed reports.
+462 of the types and 1 142 of the rows are in the Asteroid category.
 
 ### Ice is a group, and it never leaves a remainder
 
@@ -342,3 +344,10 @@ Integration:
 - **Ore variations are not used.** `ore_variations` groups the variant families,
   which would allow "all Veldspar variants" as one target. Types and groups cover
   the need today.
+
+## Operational note
+
+Reprocessing yields arrive with `seed_catalog`. A deployment that seeded before
+this feature has `portion_size` defaulted to 1 and no `EveTypeMaterial` rows, so
+every reprocessing rule would flag its lines as having no outputs. Re-run
+`manage.py seed_catalog` after upgrading; it is idempotent.

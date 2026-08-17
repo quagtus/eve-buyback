@@ -16,12 +16,17 @@ from datetime import datetime
 from decimal import Decimal
 
 from pricing.domain.decisions import FlagReason, PriceDecision, PriceSourceKind
-from pricing.domain.ruleset import ItemClassification, Rule, RuleSet
+from pricing.domain.ruleset import (
+    ItemClassification,
+    ReprocessingRule,
+    Rule,
+    RuleSet,
+)
 
 ZERO = Decimal("0")
 
 
-def _best_match(rules: tuple[Rule, ...], item: ItemClassification) -> Rule | None:
+def _best_match(rules, item: ItemClassification):
     """Return the rule matching `item` at the most specific level, or None.
 
     Specificity is absolute: a higher match level always wins regardless of
@@ -40,8 +45,13 @@ def _best_match(rules: tuple[Rule, ...], item: ItemClassification) -> Rule | Non
     higher percent is the defensible business behaviour for a buyback in
     that broken-data state: the seller gets the better of the two offers
     rather than an arbitrary one.
+
+    `rules` is deliberately unannotated: it takes either Rule or
+    ReprocessingRule, and the compared value is `rule.tie_break_value` —
+    a percentage for one, a yield rate for the other. Both mean "the better
+    offer for the seller", so one walk serves both.
     """
-    best: Rule | None = None
+    best = None
     best_level = None
     for rule in rules:
         level = rule.match_level(item)
@@ -50,7 +60,7 @@ def _best_match(rules: tuple[Rule, ...], item: ItemClassification) -> Rule | Non
         if (
             best_level is None
             or level > best_level
-            or (level == best_level and rule.percent > best.percent)
+            or (level == best_level and rule.tie_break_value > best.tie_break_value)
         ):
             best, best_level = rule, level
     return best
@@ -100,3 +110,15 @@ def resolve_price(
         flagged=True,
         flag_reason=FlagReason.NO_RULE,
     )
+
+
+def resolve_reprocessing(
+    item: ItemClassification, ruleset: RuleSet
+) -> ReprocessingRule | None:
+    """The reprocessing rule governing this item, or None to price it at market.
+
+    Deliberately separate from resolve_price: reprocessing chooses the valuation
+    basis, while resolve_price chooses what fraction of that basis is paid. They
+    compose, and neither needs to know about the other.
+    """
+    return _best_match(ruleset.reprocessing_rules, item)
