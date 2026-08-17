@@ -155,3 +155,21 @@ production, as in §3.)
 Keep `ESI_TOKEN_KEY` with your other secrets. Losing it does not lose data — the
 stored refresh token simply becomes unreadable and the page asks you to log in
 again.
+
+## Building on arm64
+
+The Tailwind standalone binary is architecture-specific, and the Dockerfile picks
+the asset from BuildKit's `TARGETARCH` (falling back to `dpkg
+--print-architecture`). Both amd64 and arm64 are supported.
+
+If you see this during the build:
+
+```
+/bin/sh: 1: tailwindcss: Exec format error
+... exit code: 126
+```
+
+the downloaded binary does not match the build architecture. That reads like a
+corrupt download but is not one — the download succeeded. Check that `TARGETARCH`
+is reaching the build, and that your architecture is one of the two mapped in the
+Dockerfile.
