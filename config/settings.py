@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "pricing",
     "buyback",
     "siteconfig",
+    "contracts",
 ]
 
 MIDDLEWARE = [
@@ -138,6 +139,27 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Janice integration
 JANICE_API_KEY = os.environ.get("JANICE_API_KEY", "")
 JANICE_BASE_URL = os.environ.get("JANICE_BASE_URL", "https://janice.e-351.com/api/rest/v2")
+
+# EVE SSO / ESI integration for the admin contract check.
+#
+# Client id and secret are environment variables for the same reason
+# JANICE_API_KEY is: credentials stay out of the database and its backups.
+# The refresh token cannot be — it is obtained at runtime — so it is encrypted
+# with ESI_TOKEN_KEY before it is stored. Generate that key with
+# `manage.py generate_esi_key`.
+ESI_CLIENT_ID = os.environ.get("ESI_CLIENT_ID", "")
+ESI_CLIENT_SECRET = os.environ.get("ESI_CLIENT_SECRET", "")
+ESI_TOKEN_KEY = os.environ.get("ESI_TOKEN_KEY", "")
+
+# Explicit rather than derived from the request: this must match the callback
+# registered at developers.eveonline.com byte for byte, and building it from
+# build_absolute_uri() behind a TLS-terminating proxy is the usual cause of
+# "invalid_request: redirect_uri mismatch".
+ESI_CALLBACK_URL = os.environ.get("ESI_CALLBACK_URL", "")
+
+# CCP asks third-party applications to identify themselves with a contactable
+# string on every ESI call.
+ESI_USER_AGENT = os.environ.get("ESI_USER_AGENT", "eve-buyback")
 
 # Public quote submission rate limit (see Task 17)
 BUYBACK_RATE_LIMIT = os.environ.get("BUYBACK_RATE_LIMIT", "10/h")
