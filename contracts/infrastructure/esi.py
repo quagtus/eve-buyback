@@ -3,7 +3,7 @@
 Schema verified against https://esi.evetech.net/meta/openapi.json (OpenAPI 3.1):
 
   GET /characters/{id}/contracts
-      scope esi-characters.read_contacts.v1
+      scope esi-contracts.read_character_contracts.v1
       paginated by ?page=N, total in the X-Pages RESPONSE HEADER
       title == the in-game contract Description
       price == the ISK the acceptor pays (item exchange and auctions)
@@ -51,6 +51,40 @@ def _parse_datetime(value: str) -> datetime:
     """ESI returns RFC 3339 with a literal Z, which fromisoformat rejects
     before Python 3.11. Normalising keeps this independent of the runtime."""
     return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+
+
+def _esi_error(response) -> str:
+    """ESI's own message for a failure, which is usually the whole diagnosis."""
+    try:
+        payload = response.json()
+    except ValueError:
+        return response.text[:200].strip()
+    if isinstance(payload, dict):
+        return str(payload.get("error") or payload.get("message") or "")[:300]
+    return ""
+
+
+def _authorization_error(response) -> ContractSourceError:
+    """Classify a 401 or 403 from ESI.
+
+    A token that lacks the scope is answered with 401 — not 403 — and the body
+    names the scope required, e.g. "Unauthorized - Token is not valid for any
+    required scope: esi-contracts.read_character_contracts.v1". Verified against
+    the live endpoint. That distinction matters because the fixes differ: a
+    missing scope needs ESI_SCOPES and the application at CCP changed, whereas an
+    expired token just needs re-linking.
+    """
+    detail = _esi_error(response)
+    if "scope" in detail.lower():
+        return ScopeRejected(
+            f"{detail}. The linked token does not carry that scope: set ESI_SCOPES "
+            "to it, make sure it is ticked on your application at "
+            "developers.eveonline.com, then connect the character again."
+        )
+    return ContractSourceError(
+        f"ESI refused the request ({response.status_code}): "
+        f"{detail or 'no detail given'}. Try connecting the character again."
+    )
 
 
 def _int_header(response, name: str, default: int) -> int:
@@ -151,16 +185,13 @@ class EsiContractGateway:
         except requests.RequestException as exc:
             raise ContractSourceError(f"ESI request failed: {exc}") from exc
 
-        if response.status_code == 403:
-            raise ScopeRejected(
-                "ESI refused the request (403). The contracts permission may have "
-                "been revoked in-game — link the character again."
-            )
+        if response.status_code in (401, 403):
+            raise _authorization_error(response)
         try:
             response.raise_for_status()
         except requests.HTTPError as exc:
             raise ContractSourceError(
-                f"ESI returned {response.status_code}: {exc}"
+                f"ESI returned {response.status_code}: {_esi_error(response) or exc}"
             ) from exc
         return response
 

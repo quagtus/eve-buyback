@@ -172,13 +172,17 @@ def test_a_contract_with_no_title_has_an_empty_quote_code():
 
 
 @responses.activate
-def test_a_403_is_a_scope_rejection():
-    """The operator revoked the app in-game. Recovery is a re-link, so this
-    needs its own exception type."""
+def test_a_403_with_no_scope_detail_suggests_reconnecting():
+    """Not classified as a scope problem, because ESI says so explicitly when it
+    is one. Whatever else a 403 means, re-linking is the useful first move."""
     responses.add(responses.GET, CONTRACTS_URL, json={"error": "forbidden"}, status=403)
 
-    with pytest.raises(ScopeRejected):
+    with pytest.raises(ContractSourceError) as exc:
         build_gateway().fetch_contracts(character_id=CHARACTER_ID, access_token="token")
+
+    message = str(exc.value)
+    assert "forbidden" in message
+    assert "connecting the character again" in message
 
 
 @responses.activate
@@ -345,3 +349,71 @@ def test_the_compatibility_date_is_configurable():
     gateway.fetch_contracts(character_id=CHARACTER_ID, access_token="t")
 
     assert responses.calls[0].request.headers["X-Compatibility-Date"] == "2025-09-30"
+
+
+# Verified against live ESI: a token lacking the scope is answered with 401, not
+# 403, and the body names the scope that was needed:
+#   {"error":"Unauthorized - Token is not valid for any required scope:
+#             esi-contracts.read_character_contracts.v1"}
+# Discarding that body left the operator with a bare "ESI returned 401", which
+# says nothing about the cause or the fix.
+SCOPE_401 = {
+    "error": (
+        "Unauthorized - Token is not valid for any required scope: "
+        "esi-contracts.read_character_contracts.v1"
+    )
+}
+
+
+@responses.activate
+def test_a_401_about_scope_is_reported_as_a_scope_rejection():
+    responses.add(responses.GET, CONTRACTS_URL, json=SCOPE_401, status=401)
+
+    with pytest.raises(ScopeRejected) as exc:
+        build_gateway().fetch_contracts(character_id=CHARACTER_ID, access_token="t")
+
+    message = str(exc.value)
+    assert "esi-contracts.read_character_contracts.v1" in message, (
+        "ESI names the scope it needs; that is the single most useful part"
+    )
+    assert "ESI_SCOPES" in message, "the message should say what to change"
+
+
+@responses.activate
+def test_a_401_not_about_scope_is_a_plain_contract_source_error():
+    """An expired or malformed token is a different problem with a different fix."""
+    responses.add(
+        responses.GET,
+        CONTRACTS_URL,
+        json={"error": "Unauthorized - Invalid token"},
+        status=401,
+    )
+
+    with pytest.raises(ContractSourceError) as exc:
+        build_gateway().fetch_contracts(character_id=CHARACTER_ID, access_token="t")
+
+    assert not isinstance(exc.value, ScopeRejected)
+    assert "Invalid token" in str(exc.value)
+
+
+@responses.activate
+def test_esi_error_bodies_are_included_in_the_message():
+    responses.add(
+        responses.GET,
+        CONTRACTS_URL,
+        json={"error": "Internal Server Error - unhandled"},
+        status=500,
+    )
+
+    with pytest.raises(ContractSourceError) as exc:
+        build_gateway().fetch_contracts(character_id=CHARACTER_ID, access_token="t")
+
+    assert "unhandled" in str(exc.value)
+
+
+@responses.activate
+def test_a_403_mentioning_scope_is_still_a_scope_rejection():
+    responses.add(responses.GET, CONTRACTS_URL, json=SCOPE_401, status=403)
+
+    with pytest.raises(ScopeRejected):
+        build_gateway().fetch_contracts(character_id=CHARACTER_ID, access_token="t")

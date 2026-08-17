@@ -163,11 +163,16 @@ ESI_USER_AGENT = os.environ.get("ESI_USER_AGENT", "eve-buyback")
 
 # Space-separated scopes requested at login.
 #
-# SSO answers "The requested '<scope>' scope is not valid" for any scope that is
-# not selected on the application at developers.eveonline.com, so which scope
-# works is a property of that registration, not of this code. Keep this in step
-# with the scopes ticked on your application.
-ESI_SCOPES = os.environ.get("ESI_SCOPES", "esi-characters.read_contacts.v1")
+# ESI names what it needs when a token falls short:
+#   "Unauthorized - Token is not valid for any required scope:
+#    esi-contracts.read_character_contracts.v1"
+#
+# The scope must also be ticked on the application at developers.eveonline.com,
+# or SSO answers "The requested '<scope>' scope is not valid" at login — an
+# application-registration problem rather than a wrong string here.
+ESI_SCOPES = os.environ.get(
+    "ESI_SCOPES", "esi-contracts.read_character_contracts.v1"
+)
 
 # ESI requires an X-Compatibility-Date header on every request. It pins which
 # revision of the API answers, so CCP can change response shapes without
