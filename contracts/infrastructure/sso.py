@@ -70,11 +70,34 @@ def make_pkce_pair() -> tuple[str, str]:
     return verifier, challenge
 
 
-def _error_code(response) -> str:
+def _error_from(response) -> tuple[str, str]:
+    """Return (machine error code, message worth showing the operator).
+
+    SSO answers most failures with a JSON `error`, but a 401 from wrong client
+    credentials returns the HTML login page instead — verified against the live
+    endpoint. Echoing that body produced "SSO rejected the request: <!DOCTYPE
+    html> <html lang=..." on screen, which names neither the cause nor the fix.
+    """
     try:
-        return response.json().get("error") or response.text[:200]
+        payload = response.json()
     except ValueError:
-        return response.text[:200]
+        payload = None
+
+    if isinstance(payload, dict) and payload.get("error"):
+        code = str(payload["error"])
+        description = payload.get("error_description")
+        return code, f"{code}: {description}" if description else code
+
+    if "html" in response.headers.get("content-type", "").lower():
+        return "", (
+            f"HTTP {response.status_code} and an HTML page rather than a JSON "
+            "error, which is what SSO returns when the application credentials "
+            "are wrong. Check ESI_CLIENT_ID and ESI_CLIENT_SECRET against your "
+            "application at developers.eveonline.com, and confirm "
+            "ESI_CALLBACK_URL matches the registered callback exactly."
+        )
+
+    return "", f"HTTP {response.status_code}: {response.text[:200]}"
 
 
 class EveSso:
@@ -144,8 +167,10 @@ class EveSso:
             raise SsoError(f"SSO token request failed: {exc}") from exc
 
         if response.status_code in (400, 401):
-            detail = _error_code(response)
-            if detail == "invalid_grant":
+            code, detail = _error_from(response)
+            # Only invalid_grant means "the credential is dead, log in again".
+            # Everything else here is configuration, which a re-login cannot fix.
+            if code == "invalid_grant":
                 raise TokenRejected(
                     "SSO rejected the credential. Link the character again."
                 )

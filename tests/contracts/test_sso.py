@@ -196,3 +196,70 @@ def test_revoking_posts_the_token_with_its_type_hint():
     body = parse_qs(responses.calls[0].request.body)
     assert body["token"] == ["old-token"]
     assert body["token_type_hint"] == ["refresh_token"]
+
+
+# Verified live: POSTing to the token endpoint with a wrong client secret returns
+# 401 with content-type text/html and the SSO login page as the body — not a JSON
+# error. Dumping that body verbatim produced "SSO rejected the request:
+# <!DOCTYPE html> <html lang=..." which names neither the cause nor the fix.
+HTML_ERROR_PAGE = (
+    '\n<!DOCTYPE html>\n<html lang="en">\n<head>\n'
+    '    <script src="https://sso-assets.eveonline.com/dist/lib-BKwMjlp5.prod.js"'
+    ' defer type="module"></script>\n    <link rel="stylesheet" href="/x.css">\n'
+)
+
+
+@responses.activate
+def test_an_html_401_blames_the_client_credentials_not_the_markup():
+    responses.add(
+        responses.POST,
+        TOKEN_URL,
+        body=HTML_ERROR_PAGE,
+        status=401,
+        content_type="text/html; charset=utf-8",
+    )
+
+    with pytest.raises(SsoError) as exc:
+        build_sso().exchange_code("code", "verifier")
+
+    message = str(exc.value)
+    assert "ESI_CLIENT_SECRET" in message, "the message must name what to check"
+    assert "<!DOCTYPE" not in message, "the HTML body must not be pasted into the error"
+    assert "<script" not in message
+
+
+@responses.activate
+def test_an_html_401_is_not_mistaken_for_a_dead_refresh_token():
+    """Bad credentials are fixed by editing the environment; a re-login cannot
+    help, so this must not surface as TokenRejected."""
+    responses.add(
+        responses.POST,
+        TOKEN_URL,
+        body=HTML_ERROR_PAGE,
+        status=401,
+        content_type="text/html; charset=utf-8",
+    )
+
+    with pytest.raises(SsoError) as exc:
+        build_sso().refresh("some-token")
+
+    assert not isinstance(exc.value, TokenRejected)
+
+
+@responses.activate
+def test_a_json_error_description_is_included():
+    responses.add(
+        responses.POST,
+        TOKEN_URL,
+        json={
+            "error": "invalid_request",
+            "error_description": "Invalid redirect_uri",
+        },
+        status=400,
+    )
+
+    with pytest.raises(SsoError) as exc:
+        build_sso().exchange_code("code", "verifier")
+
+    assert "invalid_request" in str(exc.value)
+    assert "Invalid redirect_uri" in str(exc.value)
