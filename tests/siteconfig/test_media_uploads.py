@@ -47,7 +47,12 @@ def test_uploaded_logo_is_written_inside_media_root(tmp_path):
 
         stored = pathlib.Path(config.site_logo.path)
         try:
-            assert stored.parent == tmp_path, f"upload escaped MEDIA_ROOT: {stored}"
+            # Inside MEDIA_ROOT, not necessarily directly in it: logos go to a
+            # logos/ subdirectory. What matters is that nothing escapes into the
+            # source tree, which is the bug this file exists for.
+            assert stored.is_relative_to(tmp_path), (
+                f"upload escaped MEDIA_ROOT: {stored}"
+            )
             assert stored.exists()
         finally:
             stored.unlink(missing_ok=True)

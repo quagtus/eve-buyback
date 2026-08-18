@@ -1,4 +1,7 @@
+from django.core.files.uploadedfile import UploadedFile
 from django.db import models
+
+from siteconfig.images import process_logo
 
 
 class PricingBasis(models.TextChoices):
@@ -59,10 +62,20 @@ class SiteConfig(models.Model):
         blank=True,
         help_text="Shown at the bottom of every page.",
     )
+    # width_field/height_field let the template emit width= and height= without
+    # opening the file on every page render, which reserves the header space and
+    # stops it jumping as the image arrives.
+    logo_width = models.PositiveIntegerField(null=True, blank=True, editable=False)
+    logo_height = models.PositiveIntegerField(null=True, blank=True, editable=False)
     site_logo = models.ImageField(
         blank=True,
-        upload_to="",
-        help_text="Shown on every page.",
+        upload_to="logos/",
+        width_field="logo_width",
+        height_field="logo_height",
+        help_text=(
+            "Shown in the header on every page. Resized to fit 512px on save, "
+            "so a small file is fine — the original is not kept."
+        ),
     )
     contract_to = models.CharField(
         max_length=255,
@@ -89,7 +102,41 @@ class SiteConfig(models.Model):
 
     def save(self, *args, **kwargs):
         self.pk = 1
+
+        # Captured before the write so the file being replaced can be removed
+        # afterwards. ImageField deletes nothing on its own, so without this every
+        # replacement leaves the previous logo on disk forever.
+        previous = (
+            type(self)
+            .objects.filter(pk=1)
+            .values_list("site_logo", flat=True)
+            .first()
+        )
+
+        # Only a fresh upload is processed. Reprocessing on every save would
+        # re-encode the JPEG each time, losing a little quality on every
+        # unrelated settings edit.
+        incoming = self.site_logo
+        if incoming and isinstance(getattr(incoming, "file", None), UploadedFile):
+            processed = process_logo(incoming.file)
+            self.site_logo.save(processed.name, processed, save=False)
+
         super().save(*args, **kwargs)
+
+        current = self.site_logo.name or ""
+        if previous and previous != current:
+            self._delete_stored_file(previous)
+
+    @classmethod
+    def _delete_stored_file(cls, name: str) -> None:
+        """Remove a file the logo field no longer points at.
+
+        Guarded by exists(): a missing file means someone cleaned up by hand, and
+        that should not turn a settings save into an error.
+        """
+        storage = cls._meta.get_field("site_logo").storage
+        if name and storage.exists(name):
+            storage.delete(name)
 
     def delete(self, *args, **kwargs):
         """The singleton is never deleted."""
