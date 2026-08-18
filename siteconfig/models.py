@@ -62,16 +62,16 @@ class SiteConfig(models.Model):
         blank=True,
         help_text="Shown at the bottom of every page.",
     )
-    # width_field/height_field let the template emit width= and height= without
-    # opening the file on every page render, which reserves the header space and
-    # stops it jumping as the image arrives.
+    # Populated in save() from the processed image, NOT via ImageField's
+    # width_field/height_field. Those attach a post_init receiver that opens the
+    # image whenever the fields are empty, so merely loading the row reads the
+    # filesystem — and a row whose file has gone raises FileNotFoundError on
+    # every request. Setting them here keeps model loading free of any I/O.
     logo_width = models.PositiveIntegerField(null=True, blank=True, editable=False)
     logo_height = models.PositiveIntegerField(null=True, blank=True, editable=False)
     site_logo = models.ImageField(
         blank=True,
         upload_to="logos/",
-        width_field="logo_width",
-        height_field="logo_height",
         help_text=(
             "Shown in the header on every page. Resized to fit 512px on save, "
             "so a small file is fine — the original is not kept."
@@ -119,7 +119,10 @@ class SiteConfig(models.Model):
         incoming = self.site_logo
         if incoming and isinstance(getattr(incoming, "file", None), UploadedFile):
             processed = process_logo(incoming.file)
+            self.logo_width, self.logo_height = processed.image_size
             self.site_logo.save(processed.name, processed, save=False)
+        elif not incoming:
+            self.logo_width = self.logo_height = None
 
         super().save(*args, **kwargs)
 

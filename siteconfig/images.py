@@ -76,4 +76,10 @@ def process_logo(uploaded) -> ContentFile:
         )
         name = f"{stem}.jpg"
 
-    return ContentFile(buffer.getvalue(), name=name)
+    processed = ContentFile(buffer.getvalue(), name=name)
+    # Carried on the returned file so the caller can store the dimensions without
+    # reopening the image. ImageField's width_field/height_field would do this
+    # too, but at the cost of a post_init receiver that reads the file on every
+    # model instantiation.
+    processed.image_size = image.size
+    return processed

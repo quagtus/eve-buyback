@@ -9,11 +9,16 @@
 #   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 services:
   web:
-    # Drop the base file's source bind-mount so the container runs the code
-    # that was COPY'd into the image at build time, not the host checkout.
-    # An empty list (rather than omitting the key) is required to override
-    # the base file's `volumes: - .:/app` instead of merging with it.
-    volumes: !reset []
+    # `!reset` replaces the base file's `- .:/app` source bind-mount rather than
+    # merging with it, so the container runs the code COPY'd into the image at
+    # build time, not the host checkout.
+    #
+    # The media volume is the one mount that must remain. static/uploads/ is
+    # gitignored, so it is not in the image either — without this, every
+    # `up --build` silently loses the uploaded logo and leaves the database
+    # pointing at a file that no longer exists, which is a 500 on every page.
+    volumes: !reset
+      - media:/app/static/uploads
     command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3
     environment:
       DJANGO_DEBUG: "0"
@@ -23,3 +28,6 @@ services:
     # Postgres stays reachable only from other containers on the compose
     # network, never from the host or the public internet.
     ports: !reset []
+
+volumes:
+  media:
