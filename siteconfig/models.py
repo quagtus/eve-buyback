@@ -1,4 +1,5 @@
 from django.core.files.uploadedfile import UploadedFile
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 from siteconfig.images import process_logo
@@ -75,6 +76,22 @@ class SiteConfig(models.Model):
         help_text=(
             "Shown in the header on every page. Resized to fit 512px on save, "
             "so a small file is fine — the original is not kept."
+        ),
+    )
+    logo_display_height = models.PositiveIntegerField(
+        default=40,
+        validators=[MinValueValidator(16), MaxValueValidator(400)],
+        help_text=(
+            "Height of the logo in the site header, in pixels. Width follows the "
+            "image's own proportions."
+        ),
+    )
+    logo_display_max_width = models.PositiveIntegerField(
+        default=160,
+        validators=[MinValueValidator(32), MaxValueValidator(800)],
+        help_text=(
+            "Widest the logo may render, in pixels. Stops a very wide logo "
+            "squeezing the site name out of the header."
         ),
     )
     contract_to = models.CharField(

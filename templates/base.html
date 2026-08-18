@@ -36,10 +36,16 @@
                 object-contain, not cover: most logos are wider than they are tall,
                 and cover crops the sides off. Height is fixed and width follows the
                 aspect ratio, capped so a very wide logo cannot squeeze out the name.
+
+                The size is an inline style rather than Tailwind classes because
+                Tailwind compiles its classes from the templates at build time —
+                a class name assembled from a database value would never exist in
+                the stylesheet.
               {% endcomment %}
               <img src="{{ SITE_LOGO.url }}" alt="{{ SITE_NAME }} logo"
                    {% if SITE_LOGO_WIDTH %}width="{{ SITE_LOGO_WIDTH }}" height="{{ SITE_LOGO_HEIGHT }}"{% endif %}
-                   class="h-10 w-auto max-w-[10rem] shrink-0 object-contain">
+                   style="height: {{ LOGO_DISPLAY_HEIGHT }}px; max-width: {{ LOGO_DISPLAY_MAX_WIDTH }}px;"
+                   class="w-auto shrink-0 object-contain">
             {% endif %}
             <div class="min-w-0">
               <a href="{% url 'buyback:form' %}"

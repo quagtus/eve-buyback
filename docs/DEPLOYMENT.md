@@ -173,3 +173,28 @@ the downloaded binary does not match the build architecture. That reads like a
 corrupt download but is not one — the download succeeded. Check that `TARGETARCH`
 is reaching the build, and that your architecture is one of the two mapped in the
 Dockerfile.
+
+## Host-specific compose overrides
+
+`docker-compose.prod.yml` is tracked, so editing it in place means every `git
+pull` conflicts. Put anything particular to one host — reverse-proxy networks,
+exposed ports, labels — in `docker-compose.proxy.yml`, which is gitignored, and
+layer it last:
+
+```bash
+docker compose -f docker-compose.yml \
+               -f docker-compose.prod.yml \
+               -f docker-compose.proxy.yml up -d --build
+```
+
+Later files win, so this can override anything the prod file sets.
+
+## The site logo
+
+Uploads are resized to fit 512px and re-encoded on save, so a large source file
+is fine — only the shrunk version is stored and served. How big it *renders* is
+separate: **Site configuration → Logo display height / Logo display max width**.
+
+Media lives on the `media` volume declared in `docker-compose.prod.yml`. Without
+it, `up --build` would discard the upload and leave the database pointing at a
+file that no longer exists.

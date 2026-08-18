@@ -10,3 +10,11 @@ contract_end_preview.html
 
 # Admin-uploaded media
 static/uploads/
+
+# Deployment-specific compose override, layered after docker-compose.prod.yml:
+#   docker compose -f docker-compose.yml \
+#                  -f docker-compose.prod.yml \
+#                  -f docker-compose.proxy.yml up -d --build
+# Holds whatever is particular to one host — reverse-proxy networks, exposed
+# ports, labels — so pulling never conflicts with the tracked prod file.
+docker-compose.proxy.yml
